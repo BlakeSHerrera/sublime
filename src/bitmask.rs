@@ -11,6 +11,17 @@ pub fn print(mask: u64) {
 }
 
 
+pub const fn count_bits(mask: u64) -> i32 {
+    let mut count = 0;
+    let mut remain = mask;
+    while remain != 0 {
+        count += 1;
+        remain = remain & !(1 << remain.trailing_zeros());
+    }
+    count
+}
+
+
 pub const fn shift_left(mask: u64, n: usize) -> u64 {
     (mask & !LEFT_FILES[n]) >> n
 }
