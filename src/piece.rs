@@ -8,7 +8,7 @@ use Piece::*;
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
-    Black = 0, White,
+    White = 0, Black,
 }
 
 impl Color {
@@ -67,6 +67,16 @@ pub enum Promotion {
 }
 
 
+#[derive(Debug)]
+pub enum FenError {
+    InvalidPieceChar(char),
+}
+
+pub const CHARS: [char; 12] = [
+    'R', 'N', 'B', 'Q', 'K', 'P',
+    'r', 'n', 'b', 'q', 'k', 'p',
+];
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColoredPiece {
@@ -91,5 +101,27 @@ impl ColoredPiece {
 
     pub const fn get_moveset(self) -> Moveset {
         Moveset::FULL_ARR[self as usize]
+    }
+
+    pub const fn get_char(self) -> char {
+        CHARS[self as usize]
+    }
+
+    pub const fn from_char(chr: char) -> Result<Self, FenError> {
+        match chr {
+            'R' => Ok(WhiteRook),
+            'N' => Ok(WhiteKnight),
+            'B' => Ok(WhiteBishop),
+            'Q' => Ok(WhiteQueen),
+            'K' => Ok(WhiteKing),
+            'P' => Ok(WhitePawn),
+            'r' => Ok(BlackRook),
+            'n' => Ok(BlackKnight),
+            'b' => Ok(BlackBishop),
+            'q' => Ok(BlackQueen),
+            'k' => Ok(BlackKing),
+            'p' => Ok(BlackPawn),
+            _ => Err(FenError::InvalidPieceChar(chr)),
+        }
     }
 }
