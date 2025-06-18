@@ -1,4 +1,6 @@
+use crate::board_move::Castling;
 use crate::piece::*;
+use crate::square::Square;
 
 
 #[derive(Debug)]
@@ -30,8 +32,8 @@ pub enum FenError {
     InvalidColor(char),
     InvalidCastlingChar(char),
     InvalidCastling,
-    InvalidEP,
-    WrongEPRank,
+    InvalidEnPassant,
+    WrongEnPassantRank,
     HalfmoveNotANumber,
     FullmoveNotANumber,
     IllegalPosition(IllegalPosition),
@@ -59,6 +61,15 @@ pub enum PacnError {
     IllegalMove(IllegalMove),
 }
 
+#[derive(Debug)]
+pub enum CorruptedBitboard {
+    OccupancyMismatch(Square),
+    ZobristMismatch(u64),
+    EnPassantCodeMismatch(u32),
+    CastlingIncorrect(Castling),
+    NoEnPassantAttacker,
+    NoEnPassantDefender,
+}
 
 #[derive(Debug)]
 pub enum IllegalPosition {
@@ -68,4 +79,5 @@ pub enum IllegalPosition {
     SameColorBishops(Color),  // No pawn promotions
     InvalidEPTarget,
     InvalidPawnRank,
+    CorruptedBitboard(CorruptedBitboard),
 }

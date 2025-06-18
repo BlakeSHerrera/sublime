@@ -16,8 +16,12 @@ const FULLMOVE_CTR_OFFSET: u32 = 17;
 const HALFMOVE_CTR_BITS: u32 = FULLMOVE_CTR_OFFSET - HALFMOVE_CTR_OFFSET;
 const FULLMOVE_CTR_BITS: u32 = 32 - FULLMOVE_CTR_OFFSET;
 
-const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+
+const WHITE_OCCUPANCY: usize = ColoredPiece::ALL.len();
+const BLACK_OCCUPANCY: usize = WHITE_OCCUPANCY + 1;
+const FULL_OCCUPANCY: usize = BLACK_OCCUPANCY + 1;
 
 /*
 fen_info bits:
@@ -28,21 +32,19 @@ fen_info bits:
 9-16    (8)     Half-move counter
 17-31   (15)    Full-move counter
 */
-struct GameState {
-    bitboard: [u64; 12],
-    white_occupancy: u64,
-    black_occupancy: u64,
-    full_occupancy: u64,
+pub struct GameState {
+    // See constants above for last 3 indicies
+    bitboard: [u64; ColoredPiece::ALL.len() + 3],
     fen_info: u32,
     zobrist_hash: u64,  // TODO set in methods
 }
 
 impl GameState {
 
-    pub const fn piece_at(&self, row: u64, col: u64) -> Option<ColoredPiece> {
+    pub const fn piece_at(&self, row: usize, col: usize) -> Option<ColoredPiece> {
         let mut i = 0;
-        while i < self.bitboard.len() {
-            if self.bitboard[i] & 8 * row + col != 0 {
+        while i < ColoredPiece::ALL.len() {
+            if self.bitboard[i] & Square::from_rc(row, col).mask() != 0 {
                 return Some(ColoredPiece::ALL[i]);
             }
             i += 1;
@@ -50,6 +52,22 @@ impl GameState {
         None
     }
 
+    const fn w_occ(&self) -> u64 {
+        self.bitboard[WHITE_OCCUPANCY]
+    }
+
+    const fn b_occ(&self) -> u64 {
+        self.bitboard[BLACK_OCCUPANCY]
+    }
+
+    const fn full_occ(&self) -> u64 {
+        self.bitboard[FULL_OCCUPANCY]
+    }
+
+    const fn occ(&self, color: Color) -> u64 {
+        self.bitboard[ColoredPiece::ALL.len() + color as usize]
+    }
+    
 
     const fn set_zobrist(&self) {
         // TODO
@@ -57,7 +75,7 @@ impl GameState {
 
 
     const fn set_fen_bits(&mut self, offset: u32, num_bits: u32, bits: u32) {
-        self.fen_info = self.fen_info & !((1 << num_bits) - 1) << offset | bits << offset;
+        self.fen_info = self.fen_info & !((1 << num_bits) - 1 << offset) | bits << offset;
     }
 
 
@@ -66,10 +84,11 @@ impl GameState {
     }
 
     pub const fn can_castle(&self, castling: Castling) -> bool {
-        self.castling_code() & 1 << (castling as u32) != 0
+        self.castling_code() & (1 << castling as u32) != 0
     }
 
     pub const fn deny_castling(&mut self, castling: Castling) {
+        // Optimization over set_castling
         self.fen_info &= !(1 << CASTLING_OFFSET + castling as u32);
     }
 
@@ -154,7 +173,7 @@ impl GameState {
     
 
     pub const fn halfmove_ctr(&self) -> u32 {
-        self.fen_info >> HALFMOVE_CTR_OFFSET & !((1 << HALFMOVE_CTR_BITS) - 1)
+        self.fen_info >> HALFMOVE_CTR_OFFSET & !((1 << HALFMOVE_CTR_BITS + 1) - 1)
     }
 
     pub const fn is_50_move_rule(&self) -> bool {
@@ -186,5 +205,271 @@ impl GameState {
             chars.push('-');
         }
         String::from_iter(chars)
+    }
+
+    pub fn fen(&self) -> String {
+        let mut s = String::new();
+
+        // Piece configuration
+        for r in (0..8).rev() {
+            let mut blanks: u8 = 0;
+            for c in 0..8 {
+                match self.piece_at(r, c) {
+                    None => blanks += 1,
+                    Some(piece) => {
+                        if blanks > 0 {
+                            s.push((blanks + b'0') as char);
+                            blanks = 0;
+                        }
+                        s.push(piece.get_char());
+                    }
+                }
+            }
+            if blanks > 0 {
+                s.push((blanks + b'0') as char);
+            }
+            if r != 0 {
+                s.push('/');
+            }
+        }
+
+        // Side to move
+        s.push(' ');
+        s.push(self.turn().chr());
+
+        // Castling options
+        s.push(' ');
+        match self.castling_code() == 0 {
+            true => s.push('-'),
+            false => for castle_option in Castling::ALL {
+                if self.can_castle(castle_option) {
+                    s.push(castle_option.get_char());
+                }
+            }
+        }
+        
+        // En passant
+        s.push(' ');
+        match self.ep_legal() {
+            false => s.push('-'),
+            true => s.extend(self.ep_square().chrs()),
+        }
+
+        // Halfmove counter
+        s.push_str(&format!(" {}", self.halfmove_ctr()));
+
+        // Fullmove counter
+        s.push_str(&format!(" {}", self.fullmove_ctr()));
+        
+        s
+    }
+
+    fn empty() -> GameState {
+        GameState {
+            bitboard: [0; 15],
+            fen_info: 0,
+            zobrist_hash: 0,
+        }
+    }
+
+    pub fn from_fen(fen: &str) -> Result<GameState, FenError> {
+        let mut state = GameState::empty();
+        let mut chars = fen.chars();
+        let mut i = 0;
+
+        // Board
+        let mut row = 7;
+        let mut col = 0;
+        loop {
+            i += 1;
+            match chars.next() {
+                None => break,
+                Some(chr) => match chr {
+                    ' ' => break,
+                    '/' => match (row, col) {
+                        (0, _) => return Err(FenError::TooManyRows),
+                        (_, 8) => (row, col) = (row - 1, 0),
+                        (_, _) => return Err(FenError::IncompleteRow(row)),
+                    },
+                    '1'..'9' => match col + chr as u8 - b'0' {
+                        9.. => return Err(FenError::TooManyColumns(row)),
+                        c => col = c,
+                    },
+                    _ => {
+                        let piece = ColoredPiece::from_char(chr)? as usize;
+                        state.bitboard[piece] |= 1u64 << 8 * row + col as i32;
+                        col += 1;
+                    },
+                }
+            }
+        }
+        match (row, col) {
+            (0, 8) => (),
+            (0, _) => return Err(FenError::TooManyRows),
+            (1.., 8) => return Err(FenError::IncompleteRow(row - 1)),
+            _ => return Err(FenError::IncompleteRow(row)),
+        }
+
+        // Side to move
+        i += 1;
+        match chars.next() {
+            None => return Err(FenError::MissingSection(FenSection::SideToMove)),
+            Some(chr) => state.set_turn(Color::from_chr(chr)?),
+        }
+
+        i += 1;
+        match chars.next() {
+            None => return Err(FenError::MissingSection(FenSection::Castling)),
+            Some(' ') => (),
+            _ => return Err(FenError::ExpectedSpace(i)),
+        }
+
+        // Castling
+        for castling in Castling::ALL {
+            state.deny_castling(castling);
+        }
+        let mut min_index: usize = 0;
+        loop {
+            i += 1;
+            match chars.next() {
+                None => return Err(FenError::MissingSection(FenSection::Castling)),
+                Some(' ') => break,
+                Some('-') => match min_index {
+                    0 => min_index = 5,
+                    _ => return Err(FenError::InvalidCastling),
+                },
+                Some(chr) => {
+                    let castling = Castling::from_char(chr)?;
+                    match (castling as usize) < min_index {
+                        true => return Err(FenError::CastlingOutOfOrder),
+                        false => {
+                            state.set_castling(castling, true);
+                            min_index = 1 + castling as usize;
+                        },
+                    }
+                }
+            }
+        }
+        if min_index == 0 {
+            return Err(FenError::MissingSection(FenSection::Castling));
+        }
+        
+        // En Passant
+        i += 2;
+        match (chars.next(), chars.next()) {
+            (None, _) => return Err(FenError::MissingSection(FenSection::EnPassant)),
+            (Some('-'), None) => return Err(FenError::MissingSection(FenSection::HalfmoveCounter)),
+            (_, None) => return Err(FenError::CoordinateError(CoordinateError::IncompleteSquare)),
+            (Some('-'), Some(' ')) => (),
+            (Some(f), Some(r)) => match (File::from_chr(f), Rank::from_chr(r)) {
+                (Err(e), _) => return Err(FenError::CoordinateError(e)),
+                (_, Err(e)) => return Err(FenError::CoordinateError(e)),
+                (Ok(f), Ok(r)) => match state.ep_rank() == r {
+                    true => state.set_ep_target(f),
+                    false => return Err(FenError::InvalidEnPassant),
+                }
+            }
+        }
+
+        // Halfmove counter
+        let mut s = String::new();
+        loop {
+            match chars.next() {
+                None => return Err(FenError::MissingSection(FenSection::FullmoveCounter)),
+                Some(' ') => break,
+                Some(chr) => s.push(chr),
+            }
+        }
+        match s.parse::<u32>() {
+            Err(_) => return Err(FenError::HalfmoveNotANumber),
+            Ok(n) => state.set_halfmove_ctr(n),
+        }
+
+        // Fullmove counter
+        let s = String::from_iter(chars);
+        if s.len() == 0 {
+            return Err(FenError::MissingSection(FenSection::FullmoveCounter));
+        }
+        match s.parse::<u32>() {
+            Err(_) => return Err(FenError::FullmoveNotANumber),
+            Ok(n) => state.set_fullmove_ctr(n),
+        }
+        
+        // Set metadata
+        for i in 0..6 {
+            state.bitboard[WHITE_OCCUPANCY] |= state.bitboard[i];
+            state.bitboard[BLACK_OCCUPANCY] |= state.bitboard[i + 6];
+        }
+        state.bitboard[FULL_OCCUPANCY] = state.w_occ() + state.b_occ();
+
+        Ok(state)
+    }
+
+    pub fn print_verbose(&self) {
+        for i in 0..12 {
+            println!("{:?}", ColoredPiece::ALL[i]);
+            bitmask::print(self.bitboard[i]);
+            println!("");
+        }
+
+        println!("White occupancy");
+        bitmask::print(self.w_occ());
+        println!("");
+
+        println!("Black occupancy");
+        bitmask::print(self.b_occ());
+        println!("");
+
+        println!("Full occupancy");
+        bitmask::print(self.full_occ());
+        println!("");
+
+        println!(
+            "To move: {} {:01b}", 
+            self.turn().chr(), 
+            self.turn_code());
+        println!(
+            "Castling: {} {:04b}", 
+            self.castling_str(), 
+            self.castling_code());
+        println!(
+            "EP: Legal = {} {:01b}, Target = {:?} {:03b}", 
+            self.ep_legal(),
+            self.ep_legal_code(),
+            self.ep_square(),
+            self.ep_code());
+        println!(
+            "Halfmove ctr: {}",
+            self.halfmove_ctr());
+        println!(
+            "Fullmove ctr: {}",
+            self.fullmove_ctr());
+        
+        println!("Fen {}", self.fen());
+        println!("Fen bits {:032b}", self.fen_info);
+        println!(
+            "(turn, castling, ep): {:b} {:b} {:b}", 
+            self.turn_code(),
+            self.castling_code(),
+            self.ep_code());
+        println!("Zobrist hash: {:x}", self.zobrist_hash);
+    }
+
+    pub fn print_pretty(&self) {
+        for r in 0..8 {
+            let r = 7 - r;
+            for c in 0..8 {
+                let mut s = '.';
+                for p in 0..12 {
+                    if self.bitboard[p] & 1 << 8 * r + c != 0 {
+                        s = ColoredPiece::ALL[p].get_char();
+                        break;
+                    }
+                }
+                print!("{} ", s);
+            }
+            println!("");
+        }
+        println!("{}", self.fen());
     }
 }
