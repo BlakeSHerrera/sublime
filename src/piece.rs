@@ -4,6 +4,8 @@ use ColoredPiece::*;
 use Moveset::*;
 use Piece::*;
 
+use crate::err::*;
+
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +21,19 @@ impl Color {
         White, White, White, White, White, White,
         Black, Black, Black, Black, Black, Black,
     ];
+
+    pub const fn chr(self) -> char {
+        const CHARS: [char; 2] = ['w', 'b'];
+        CHARS[self as usize]
+    }
+
+    pub const fn from_chr(chr: char) -> Result<Color, FenError> {
+        match chr {
+            'w' => Ok(White),
+            'b' => Ok(Black),
+            _ => Err(FenError::InvalidColor(chr)),
+        }
+    }
 }
 
 
@@ -67,16 +82,6 @@ pub enum Promotion {
 }
 
 
-#[derive(Debug)]
-pub enum FenError {
-    InvalidPieceChar(char),
-}
-
-pub const CHARS: [char; 12] = [
-    'R', 'N', 'B', 'Q', 'K', 'P',
-    'r', 'n', 'b', 'q', 'k', 'p',
-];
-
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColoredPiece {
@@ -104,6 +109,10 @@ impl ColoredPiece {
     }
 
     pub const fn get_char(self) -> char {
+        const CHARS: [char; 12] = [
+            'R', 'N', 'B', 'Q', 'K', 'P',
+            'r', 'n', 'b', 'q', 'k', 'p',
+        ];
         CHARS[self as usize]
     }
 
@@ -121,7 +130,7 @@ impl ColoredPiece {
             'q' => Ok(BlackQueen),
             'k' => Ok(BlackKing),
             'p' => Ok(BlackPawn),
-            _ => Err(FenError::InvalidPieceChar(chr)),
+            _ => Err(FenError::InvalidPiece(chr)),
         }
     }
 }
