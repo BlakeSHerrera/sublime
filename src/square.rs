@@ -167,6 +167,14 @@ impl Square {
         File::ALL[self as usize % 8]
     }
 
+    pub const fn row(self) -> usize {
+        self as usize / 8
+    }
+
+    pub const fn col(self) -> usize {
+        self as usize % 8
+    }
+
     pub const fn diag(self) -> Diagonal {
         Diagonal::ALL[7 - self.rank() as usize + self.file() as usize]
     }

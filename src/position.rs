@@ -1,9 +1,16 @@
-use crate::bitmask;
-use crate::piece::*;
-use crate::zobrist;
-use crate::board_move::Castling;
-use crate::square::*;
+use std::cmp::max;
+
+use crate::bitmask::{self, DARK_SQUARES};
+use crate::board_move::{Castling, Castling::*};
 use crate::err::*;
+use crate::piece::{
+    *,
+    Color::*, 
+    ColoredPiece::*,
+    Piece::*,
+};
+use crate::square::*;
+use crate::zobrist;
 
 
 const CASTLING_OFFSET: u32 = 0;
@@ -39,12 +46,119 @@ pub struct GameState {
     zobrist_hash: u64,  // TODO set in methods
 }
 
+const fn occ_mismatch(mask: u64) -> Result<(), IllegalPosition> {
+    match mask {
+        0 => Ok(()),
+        _ => Err(
+            IllegalPosition::CorruptedBitboard(
+                CorruptedBitboard::OccupancyMismatch(mask)))
+    }
+}
+
 impl GameState {
 
-    pub const fn piece_at(&self, row: usize, col: usize) -> Option<ColoredPiece> {
+    pub const fn count_piece(&self, piece: ColoredPiece) -> u32 {
+        bitmask::count_bits(self.bitboard[piece as usize])
+    }
+
+    pub const fn count_piece_validate(&self, piece: ColoredPiece, limit: u32) -> Result<u32, IllegalPosition> {
+        let n = self.count_piece(piece);
+        if n > limit {
+            return Err(IllegalPosition::TooManyPieces(piece, n));
+        }
+        Ok(n)
+    }
+
+    pub fn validate(&self) -> Result<(), IllegalPosition> {
+        let mut w_occ: u64 = 0;
+        let mut b_occ: u64 = 0;
+        let mut i = 0;
+        while i < 6 {
+            occ_mismatch(w_occ & self.bitboard[i])?;
+            w_occ |= self.bitboard[i];
+            occ_mismatch(b_occ & self.bitboard[i + 6])?;
+            b_occ |= self.bitboard[i + 6];
+            i += 1;
+        }
+        occ_mismatch(w_occ & b_occ)?;
+        occ_mismatch(w_occ ^ self.w_occ())?;
+        occ_mismatch(b_occ ^ self.b_occ())?;
+        occ_mismatch(w_occ & b_occ ^ self.full_occ())?;
+        // TODO zobrist mismatch
+
+        match self.ep_code() {
+            0 => (),
+            0b0010..0b1110 | 0b10000.. => return Err(
+                IllegalPosition::CorruptedBitboard(
+                    CorruptedBitboard::InvalidEnPassantCode(self.ep_code()))),
+            _ => {
+                let s = self.ep_square();
+                let enemy_expected = self.turn().inv().pawn_direction().shift(s.mask(), 1);
+                let enemy_actual = self.bitboard[Pawn.as_color(self.turn().inv()) as usize];
+                let allied_expected = bitmask::PAWN_ATTACKS[self.turn() as usize][s as usize];
+                let allied_actual = self.bitboard[Pawn.as_color(self.turn()) as usize];
+                if s.mask() & self.full_occ() != 0 {
+                    return Err(IllegalPosition::EnPassantSquareOccupied);
+                } else if enemy_expected & enemy_actual == 0 {
+                    return Err(IllegalPosition::NoEnPassantDefender);
+                } else if allied_expected & allied_actual == 0 {
+                    return Err(IllegalPosition::NoEnPassantAttacker);
+                }
+            }
+        }
+
+        const STARTING_COUNTS: [(Piece, u32); 4] = [
+            (Rook, 2),
+            (Knight, 2),
+            (Bishop, 2),
+            (Queen, 1)
+        ];
+        for color in Color::ALL {
+            if 0 == self.count_piece_validate(King.as_color(color), 1)? {
+                return Err(IllegalPosition::MissingKing(color));
+            }
+            let pawns = self.count_piece_validate(Pawn.as_color(color), 8)?;
+            let mut promotions_left = 8 - pawns;
+            for (piece, starting_count) in STARTING_COUNTS {
+                let count = self.count_piece_validate(piece.as_color(color), promotions_left + starting_count)?;
+                promotions_left -= max(0, count - starting_count);
+            }
+            // TODO check for same color bishops with no pawn promotions
+            let p = Bishop.as_color(color);
+            if pawns == 8 && self.count_piece(p) >= 2 {
+                let mask = self.bitboard[p as usize];
+                if (mask & bitmask::LIGHT_SQUARES).count_ones() > 1 {
+                    return Err(IllegalPosition::SameColorBishops(p, White));
+                } else if (mask & bitmask::DARK_SQUARES).count_ones() > 1 {
+                    return Err(IllegalPosition::SameColorBishops(p, Black));
+                }
+            }
+        }
+
+        for castling in Castling::ALL {
+            if !self.can_castle(castling) {
+                continue
+            }
+            let king_actual = self.piece_at(castling.king_start());
+            let king_expected = Some(King.as_color(castling.color()));
+            let rook_actual = self.piece_at(castling.rook_start());
+            let rook_expected =  Some(Rook.as_color(castling.color()));
+            if king_actual != king_expected || rook_actual != rook_expected {
+                return Err(IllegalPosition::CastlingIncorrect(castling));
+            }
+        }
+
+        Ok(())
+    }
+
+    pub const fn piece_at_rc(&self, row: usize, col: usize) -> Option<ColoredPiece> {
+        self.piece_at(Square::from_rc(row, col))
+    }
+
+    pub const fn piece_at(&self, square: Square) -> Option<ColoredPiece> {
         let mut i = 0;
         while i < ColoredPiece::ALL.len() {
-            if self.bitboard[i] & Square::from_rc(row, col).mask() != 0 {
+            if self.bitboard[i] & square.mask() != 0 {
                 return Some(ColoredPiece::ALL[i]);
             }
             i += 1;
@@ -198,7 +312,7 @@ impl GameState {
         let mut chars: Vec<char> = Vec::new();
         for i in Castling::ALL {
             if self.can_castle(i) {
-                chars.push(i.get_char());
+                chars.push(i.chr());
             }
         }
         if chars.len() == 0 {
@@ -214,7 +328,7 @@ impl GameState {
         for r in (0..8).rev() {
             let mut blanks: u8 = 0;
             for c in 0..8 {
-                match self.piece_at(r, c) {
+                match self.piece_at_rc(r, c) {
                     None => blanks += 1,
                     Some(piece) => {
                         if blanks > 0 {
@@ -243,7 +357,7 @@ impl GameState {
             true => s.push('-'),
             false => for castle_option in Castling::ALL {
                 if self.can_castle(castle_option) {
-                    s.push(castle_option.get_char());
+                    s.push(castle_option.chr());
                 }
             }
         }

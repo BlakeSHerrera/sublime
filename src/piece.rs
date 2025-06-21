@@ -4,6 +4,7 @@ use ColoredPiece::*;
 use Moveset::*;
 use Piece::*;
 
+use crate::bitmask;
 use crate::err::*;
 
 
@@ -41,6 +42,17 @@ impl Color {
             Black => White
         }
     }
+
+    pub const fn bb_offset(self) -> usize {
+        6 * self as usize
+    }
+
+    pub const fn pawn_direction(self) -> bitmask::Direction {
+        match self {
+            White => bitmask::Direction::North,
+            Black => bitmask::Direction::South,
+        }
+    }
 }
 
 
@@ -73,7 +85,7 @@ impl Piece {
         Rook, Knight, Bishop, Queen, King, Pawn,
     ];
 
-    pub fn as_color(self, color: Color) -> ColoredPiece {
+    pub const fn as_color(self, color: Color) -> ColoredPiece {
         match color {
             White => ColoredPiece::ALL[self as usize],
             Black => ColoredPiece::ALL[6 + self as usize],

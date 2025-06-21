@@ -151,8 +151,8 @@ pub const BISHOP_MAGICS: [u64; 64] = [
 ];
 
 
-const fn count_bits(arr: [u64; 64]) -> [i32; 64] {
-    let mut result: [i32; 64] = [0; 64];
+const fn count_bits(arr: [u64; 64]) -> [u32; 64] {
+    let mut result: [u32; 64] = [0; 64];
     let mut i = 0;
     while i < result.len() {
         result[i] = bitmask::count_bits(arr[i]);
@@ -161,8 +161,8 @@ const fn count_bits(arr: [u64; 64]) -> [i32; 64] {
     result
 }
 
-pub const ROOK_BITS: [i32; 64] = count_bits(ROOK_RELEVANT_OCCUPANCY);
-pub const BISHOP_BITS: [i32; 64] = count_bits(BISHOP_RELEVANT_OCCUPANCY);
+pub const ROOK_BITS: [u32; 64] = count_bits(ROOK_RELEVANT_OCCUPANCY);
+pub const BISHOP_BITS: [u32; 64] = count_bits(BISHOP_RELEVANT_OCCUPANCY);
 
 
 const fn sliding_move(blockers: u64, r: i32, c: i32, dr: i32, dc: i32) -> u64 {

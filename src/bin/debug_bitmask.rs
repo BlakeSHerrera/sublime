@@ -1,4 +1,5 @@
 use sublime::bitmask::{*, Direction::*};
+use sublime::piece::Color::*;
 
 fn print_pause(msg: &str, mask: u64) {
     println!("{msg}");
@@ -16,10 +17,6 @@ fn main() {
         ("NO_SQUARES", NO_SQUARES),
         ("DARK_SQUARES", DARK_SQUARES),
         ("LIGHT_SQUARES", LIGHT_SQUARES),
-        ("CASTLE_WQ", CASTLE_WQ),
-        ("CASTLE_WK", CASTLE_WK),
-        ("CASTLE_BQ", CASTLE_BQ),
-        ("CASTLE_BK", CASTLE_BK),
         ("CENTER_FILES", CENTER_FILES),
         ("FLANK_FILES", FLANK_FILES),
         ("WING_FILES", WING_FILES),
@@ -52,10 +49,12 @@ fn main() {
         ("DIAGONAL", DIAGONAL.to_vec()),
         ("ANTI_DIAGONAL", ANTI_DIAGONAL.to_vec()),
         ("SQUARE", SQUARE.to_vec()),
+        ("CASTLING_TO_CLEAR", CASTLING_TO_CLEAR.to_vec()),
+        ("CASTLING_NO_ATTACK", CASTLING_NO_ATTACK.to_vec()),
         ("KING_MOVES", KING_MOVES.to_vec()),
         ("KNIGHT_MOVES", KNIGHT_MOVES.to_vec()),
-        ("WHITE_PAWN_ATTACKS", WHITE_PAWN_ATTACKS.to_vec()),
-        ("BLACK_PAWN_ATTACKS", BLACK_PAWN_ATTACKS.to_vec()),
+        ("PAWN_ATTACKS[White]", PAWN_ATTACKS[White as usize].to_vec()),
+        ("PAWN_ATTACKS[Black]", PAWN_ATTACKS[Black as usize].to_vec()),
         ("RAY_CAST[Northwest]", RAY_CAST[Northwest as usize].to_vec()),
         ("RAY_CAST[North]", RAY_CAST[North as usize].to_vec()),
         ("RAY_CAST[Northeast]", RAY_CAST[Northeast as usize].to_vec()),

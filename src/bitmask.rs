@@ -1,3 +1,5 @@
+use crate::square::Square::*;
+
 
 pub fn print(mask: u64) {
     for i in 0..8 {
@@ -11,12 +13,11 @@ pub fn print(mask: u64) {
 }
 
 
-pub const fn count_bits(mask: u64) -> i32 {
+pub const fn count_bits(mut mask: u64) -> u32 {
     let mut count = 0;
-    let mut remain = mask;
-    while remain != 0 {
+    while mask != 0 {
         count += 1;
-        remain = remain & !(1 << remain.trailing_zeros());
+        mask = mask & !(1 << mask.trailing_zeros());
     }
     count
 }
@@ -162,10 +163,18 @@ pub const SQUARE: [u64; 64] = {
 };
 
 
-pub const CASTLE_WQ: u64 = SQUARE[2] | SQUARE[3] | SQUARE[4];
-pub const CASTLE_WK: u64 = SQUARE[4] | SQUARE[5] | SQUARE[6];
-pub const CASTLE_BQ: u64 = SQUARE[58] | SQUARE[59] | SQUARE[60];
-pub const CASTLE_BK: u64 = SQUARE[60] | SQUARE[61] | SQUARE[62];
+pub const CASTLING_TO_CLEAR: [u64; 4] = [
+    F1.mask() | G1.mask(),
+    D1.mask() | C1.mask() | B1.mask(),
+    F8.mask() | G8.mask(),
+    D8.mask() | C8.mask() | B8.mask(),
+];
+pub const CASTLING_NO_ATTACK: [u64; 4] = [
+    E1.mask() | F1.mask() | G1.mask(),
+    E1.mask() | D1.mask() | C1.mask(),
+    E8.mask() | F8.mask() | G8.mask(),
+    E8.mask() | D8.mask() | C8.mask(),
+];
 
 
 pub const KING_MOVES: [u64; 64] = {
@@ -217,8 +226,10 @@ const fn gen_pawn_attacks(is_white: bool) -> [u64; 64] {
     arr
 }
 
-pub const WHITE_PAWN_ATTACKS: [u64; 64] = gen_pawn_attacks(true);
-pub const BLACK_PAWN_ATTACKS: [u64; 64] = gen_pawn_attacks(false);
+pub const PAWN_ATTACKS: [[u64; 64]; 2] = [
+    gen_pawn_attacks(true), 
+    gen_pawn_attacks(false)
+];
 
 
 #[repr(u8)]

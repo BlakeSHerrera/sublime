@@ -63,21 +63,22 @@ pub enum PacnError {
 
 #[derive(Debug)]
 pub enum CorruptedBitboard {
-    OccupancyMismatch(Square),
+    OccupancyMismatch(u64),
     ZobristMismatch(u64),
-    EnPassantCodeMismatch(u32),
-    CastlingIncorrect(Castling),
-    NoEnPassantAttacker,
-    NoEnPassantDefender,
+    InvalidEnPassantCode(u32),
 }
 
 #[derive(Debug)]
 pub enum IllegalPosition {
     OpponentInCheck,
-    TooManyPieces(Piece, i32),
+    TooManyPieces(ColoredPiece, u32),
     MissingKing(Color),
-    SameColorBishops(Color),  // No pawn promotions
+    SameColorBishops(ColoredPiece, Color),  // No pawn promotions
     InvalidEPTarget,
     InvalidPawnRank,
+    CastlingIncorrect(Castling),
+    EnPassantSquareOccupied,
+    NoEnPassantAttacker,
+    NoEnPassantDefender,
     CorruptedBitboard(CorruptedBitboard),
 }
