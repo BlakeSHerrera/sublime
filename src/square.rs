@@ -195,7 +195,11 @@ impl Square {
     }
 
     pub const fn from_rank_file(rank: Rank, file: File) -> Square {
-        Square::ALL[8 * rank as usize + file as usize]
+        Square::from_rc(rank as usize, file as usize)
+    }
+
+    pub const fn from_rc(row: usize, col: usize) -> Square {
+        Square::ALL[8 * row + col]
     }
 
     pub const fn from_chrs(rank: char, file: char) -> Result<Square, CoordinateError> {

@@ -34,6 +34,13 @@ impl Color {
             _ => Err(FenError::InvalidColor(chr)),
         }
     }
+
+    pub const fn inv(self) -> Color {
+        match self {
+            White => Black,
+            Black => White
+        }
+    }
 }
 
 
