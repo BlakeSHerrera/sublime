@@ -1,71 +1,21 @@
-
-use Color::*;
-use ColoredPiece::*;
-use Moveset::*;
-use Piece::*;
-
-use crate::bitmask;
+use crate::color::{Color, Color::*};
 use crate::err::*;
 
+use Piece::*;
+use Moveset::*;
+use GenericPiece::*;
 
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Color {
-    White = 0, Black,
-}
-
-impl Color {
-
-    pub const ALL: [Color; 2] = [Black, White];
-
-    const FULL_ARR: [Color; 12] = [
-        White, White, White, White, White, White,
-        Black, Black, Black, Black, Black, Black,
-    ];
-
-    pub const fn chr(self) -> char {
-        const CHARS: [char; 2] = ['w', 'b'];
-        CHARS[self as usize]
-    }
-
-    pub const fn from_chr(chr: char) -> Result<Color, FenError> {
-        match chr {
-            'w' => Ok(White),
-            'b' => Ok(Black),
-            _ => Err(FenError::InvalidColor(chr)),
-        }
-    }
-
-    pub const fn inv(self) -> Color {
-        match self {
-            White => Black,
-            Black => White
-        }
-    }
-
-    pub const fn bb_offset(self) -> usize {
-        6 * self as usize
-    }
-
-    pub const fn pawn_direction(self) -> bitmask::Direction {
-        match self {
-            White => bitmask::Direction::North,
-            Black => bitmask::Direction::South,
-        }
-    }
-}
 
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Moveset {
     RookMove, KnightMove, BishopMove, QueenMove, KingMove,
-    // The pawns have different movement rules based on color.
     BlackPawnMove, WhitePawnMove,
 }
 
 impl Moveset {
-    const FULL_ARR: [Moveset; 12] = [
+    const PIECE_ARR: [Moveset; 12] = [
         RookMove, KnightMove, BishopMove, QueenMove, KingMove, WhitePawnMove,
         RookMove, KnightMove, BishopMove, QueenMove, KingMove, BlackPawnMove,
     ];
@@ -74,21 +24,23 @@ impl Moveset {
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Piece {
+pub enum GenericPiece {
     Rook = 0, Knight, Bishop, Queen, King, Pawn,
 }
 
-impl Piece {
+impl GenericPiece {
 
-    const FULL_ARR: [Piece; 12] = [
+    const ALL: [GenericPiece; 6] = [Rook, Knight, Bishop, Queen, King, Pawn];
+
+    const PIECE_ARR: [GenericPiece; 12] = [
         Rook, Knight, Bishop, Queen, King, Pawn,
         Rook, Knight, Bishop, Queen, King, Pawn,
     ];
 
-    pub const fn as_color(self, color: Color) -> ColoredPiece {
+    pub const fn as_color(self, color: Color) -> Piece {
         match color {
-            White => ColoredPiece::ALL[self as usize],
-            Black => ColoredPiece::ALL[6 + self as usize],
+            White => Piece::ALL[self as usize],
+            Black => Piece::ALL[6 + self as usize],
         }
     }
 }
@@ -97,37 +49,48 @@ impl Piece {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Promotion {
-    Rook, Knight, Bishop, Queen
+    Rook = 1, Knight, Bishop, Queen
+}
+
+impl Promotion {
+    
+    pub const fn as_generic_piece(self) -> GenericPiece {
+        GenericPiece::ALL[self as usize]
+    }
+
+    pub const fn as_piece(self, color: Color) -> Piece {
+        self.as_generic_piece().as_color(color)
+    }
 }
 
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ColoredPiece {
+pub enum Piece {
     WhiteRook = 0, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing, WhitePawn,
     BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing, BlackPawn,
 }
 
-impl ColoredPiece {
+impl Piece {
 
-    pub const ALL: [ColoredPiece; 12] = [
+    pub const ALL: [Piece; 12] = [
         WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing, WhitePawn,
         BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing, BlackPawn,
     ];
 
-    pub const fn get_color(self) -> Color {
-        Color::FULL_ARR[self as usize]
+    pub const fn color(self) -> Color {
+        Color::PIECE_ARR[self as usize]
     }
 
-    pub const fn get_piece(self) -> Piece {
-        Piece::FULL_ARR[self as usize]
+    pub const fn as_generic(self) -> GenericPiece {
+        GenericPiece::PIECE_ARR[self as usize]
     }
 
-    pub const fn get_moveset(self) -> Moveset {
-        Moveset::FULL_ARR[self as usize]
+    pub const fn moveset(self) -> Moveset {
+        Moveset::PIECE_ARR[self as usize]
     }
 
-    pub const fn get_char(self) -> char {
+    pub const fn chr(self) -> char {
         const CHARS: [char; 12] = [
             'R', 'N', 'B', 'Q', 'K', 'P',
             'r', 'n', 'b', 'q', 'k', 'p',

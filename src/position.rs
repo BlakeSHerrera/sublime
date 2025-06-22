@@ -1,13 +1,13 @@
 use std::cmp::max;
 
-use crate::bitmask::{self, DARK_SQUARES};
-use crate::board_move::{Castling, Castling::*};
+use crate::bitmask;
+use crate::color::{Color, Color::*};
+use crate::board_move::Castling;
 use crate::err::*;
 use crate::piece::{
-    *,
-    Color::*, 
-    ColoredPiece::*,
-    Piece::*,
+    GenericPiece,
+    GenericPiece::*,
+    Piece,
 };
 use crate::square::*;
 use crate::zobrist;
@@ -26,9 +26,21 @@ const FULLMOVE_CTR_BITS: u32 = 32 - FULLMOVE_CTR_OFFSET;
 pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
-const WHITE_OCCUPANCY: usize = ColoredPiece::ALL.len();
+const WHITE_OCCUPANCY: usize = Piece::ALL.len();
 const BLACK_OCCUPANCY: usize = WHITE_OCCUPANCY + 1;
 const FULL_OCCUPANCY: usize = BLACK_OCCUPANCY + 1;
+
+
+#[derive(Debug)]
+pub enum FenSection {
+    Board,
+    SideToMove,
+    Castling,
+    EnPassant,
+    HalfmoveCounter,
+    FullmoveCounter,
+}
+
 
 /*
 fen_info bits:
@@ -41,7 +53,7 @@ fen_info bits:
 */
 pub struct GameState {
     // See constants above for last 3 indicies
-    bitboard: [u64; ColoredPiece::ALL.len() + 3],
+    bitboard: [u64; Piece::ALL.len() + 3],
     fen_info: u32,
     zobrist_hash: u64,  // TODO set in methods
 }
@@ -57,11 +69,11 @@ const fn occ_mismatch(mask: u64) -> Result<(), IllegalPosition> {
 
 impl GameState {
 
-    pub const fn count_piece(&self, piece: ColoredPiece) -> u32 {
+    pub const fn count_piece(&self, piece: Piece) -> u32 {
         bitmask::count_bits(self.bitboard[piece as usize])
     }
 
-    pub const fn count_piece_validate(&self, piece: ColoredPiece, limit: u32) -> Result<u32, IllegalPosition> {
+    pub const fn count_piece_validate(&self, piece: Piece, limit: u32) -> Result<u32, IllegalPosition> {
         let n = self.count_piece(piece);
         if n > limit {
             return Err(IllegalPosition::TooManyPieces(piece, n));
@@ -81,8 +93,8 @@ impl GameState {
             i += 1;
         }
         occ_mismatch(w_occ & b_occ)?;
-        occ_mismatch(w_occ ^ self.w_occ())?;
-        occ_mismatch(b_occ ^ self.b_occ())?;
+        occ_mismatch(w_occ ^ self.occ(White))?;
+        occ_mismatch(b_occ ^ self.occ(Black))?;
         occ_mismatch(w_occ & b_occ ^ self.full_occ())?;
         // TODO zobrist mismatch
 
@@ -107,7 +119,7 @@ impl GameState {
             }
         }
 
-        const STARTING_COUNTS: [(Piece, u32); 4] = [
+        const STARTING_COUNTS: [(GenericPiece, u32); 4] = [
             (Rook, 2),
             (Knight, 2),
             (Bishop, 2),
@@ -144,34 +156,26 @@ impl GameState {
             let rook_actual = self.piece_at(castling.rook_start());
             let rook_expected =  Some(Rook.as_color(castling.color()));
             if king_actual != king_expected || rook_actual != rook_expected {
-                return Err(IllegalPosition::CastlingIncorrect(castling));
+                return Err(IllegalPosition::InvalidCastling(castling));
             }
         }
 
         Ok(())
     }
 
-    pub const fn piece_at_rc(&self, row: usize, col: usize) -> Option<ColoredPiece> {
+    pub const fn piece_at_rc(&self, row: usize, col: usize) -> Option<Piece> {
         self.piece_at(Square::from_rc(row, col))
     }
 
-    pub const fn piece_at(&self, square: Square) -> Option<ColoredPiece> {
+    pub const fn piece_at(&self, square: Square) -> Option<Piece> {
         let mut i = 0;
-        while i < ColoredPiece::ALL.len() {
+        while i < Piece::ALL.len() {
             if self.bitboard[i] & square.mask() != 0 {
-                return Some(ColoredPiece::ALL[i]);
+                return Some(Piece::ALL[i]);
             }
             i += 1;
         }
         None
-    }
-
-    const fn w_occ(&self) -> u64 {
-        self.bitboard[WHITE_OCCUPANCY]
-    }
-
-    const fn b_occ(&self) -> u64 {
-        self.bitboard[BLACK_OCCUPANCY]
     }
 
     const fn full_occ(&self) -> u64 {
@@ -179,7 +183,7 @@ impl GameState {
     }
 
     const fn occ(&self, color: Color) -> u64 {
-        self.bitboard[ColoredPiece::ALL.len() + color as usize]
+        self.bitboard[Piece::ALL.len() + color as usize]
     }
     
 
@@ -258,22 +262,22 @@ impl GameState {
 
     pub const fn ep_rank(&self) -> Rank {
         match self.turn() {
-            Color::White => Rank::R6,
-            Color::Black => Rank::R3,
+            Color::White => Rank::Rank6,
+            Color::Black => Rank::Rank3,
         }
     }
 
     pub const fn ep_rank_i(&self) -> Rank {
         match self.turn() {
-            Color::White => Rank::R3,
-            Color::Black => Rank::R6,
+            Color::White => Rank::Rank3,
+            Color::Black => Rank::Rank6,
         }
     }
 
     pub const fn ep_square_num(&self) -> usize {
         self.ep_file_num() + match self.turn() {
-            Color::White => Rank::R3.offset(),
-            Color::Black => Rank::R6.offset(),
+            Color::White => Rank::Rank3.offset(),
+            Color::Black => Rank::Rank6.offset(),
         }
     }
 
@@ -335,7 +339,7 @@ impl GameState {
                             s.push((blanks + b'0') as char);
                             blanks = 0;
                         }
-                        s.push(piece.get_char());
+                        s.push(piece.chr());
                     }
                 }
             }
@@ -410,7 +414,7 @@ impl GameState {
                         c => col = c,
                     },
                     _ => {
-                        let piece = ColoredPiece::from_char(chr)? as usize;
+                        let piece = Piece::from_char(chr)? as usize;
                         state.bitboard[piece] |= 1u64 << 8 * row + col as i32;
                         col += 1;
                     },
@@ -495,7 +499,7 @@ impl GameState {
             }
         }
         match s.parse::<u32>() {
-            Err(_) => return Err(FenError::HalfmoveNotANumber),
+            Err(_) => return Err(FenError::InvalidHalfmove),
             Ok(n) => state.set_halfmove_ctr(n),
         }
 
@@ -505,7 +509,7 @@ impl GameState {
             return Err(FenError::MissingSection(FenSection::FullmoveCounter));
         }
         match s.parse::<u32>() {
-            Err(_) => return Err(FenError::FullmoveNotANumber),
+            Err(_) => return Err(FenError::InvalidFullMove),
             Ok(n) => state.set_fullmove_ctr(n),
         }
         
@@ -514,24 +518,24 @@ impl GameState {
             state.bitboard[WHITE_OCCUPANCY] |= state.bitboard[i];
             state.bitboard[BLACK_OCCUPANCY] |= state.bitboard[i + 6];
         }
-        state.bitboard[FULL_OCCUPANCY] = state.w_occ() + state.b_occ();
+        state.bitboard[FULL_OCCUPANCY] = state.occ(White) + state.occ(Black);
 
         Ok(state)
     }
 
     pub fn print_verbose(&self) {
         for i in 0..12 {
-            println!("{:?}", ColoredPiece::ALL[i]);
+            println!("{:?}", Piece::ALL[i]);
             bitmask::print(self.bitboard[i]);
             println!("");
         }
 
         println!("White occupancy");
-        bitmask::print(self.w_occ());
+        bitmask::print(self.occ(White));
         println!("");
 
         println!("Black occupancy");
-        bitmask::print(self.b_occ());
+        bitmask::print(self.occ(Black));
         println!("");
 
         println!("Full occupancy");
@@ -576,7 +580,7 @@ impl GameState {
                 let mut s = '.';
                 for p in 0..12 {
                     if self.bitboard[p] & 1 << 8 * r + c != 0 {
-                        s = ColoredPiece::ALL[p].get_char();
+                        s = Piece::ALL[p].chr();
                         break;
                     }
                 }

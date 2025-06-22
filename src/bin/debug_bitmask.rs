@@ -1,5 +1,6 @@
 use sublime::bitmask::{*, Direction::*};
-use sublime::piece::Color::*;
+use sublime::color::Color::*;
+
 
 fn print_pause(msg: &str, mask: u64) {
     println!("{msg}");
@@ -8,6 +9,7 @@ fn print_pause(msg: &str, mask: u64) {
     let _ = std::io::stdout().flush();
     let _ = std::io::stdin().read_line(&mut String::new());
 }
+
 
 fn main() {
     println!("Press enter to continue.");

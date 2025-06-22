@@ -8,15 +8,25 @@ https://github.com/BlakeSHerrera/CS-3793-Chess-AI/blob/main/magic.c
 */
 
 use crate::bitmask;
-use crate::bitmask::{
-    BISHOP_RELEVANT_OCCUPANCY,
-    NO_SQUARES,
-    ROOK_RELEVANT_OCCUPANCY,
-    SQUARE
-};
+use crate::bitmask::*;
 
 
-pub const ROOK_MAGICS: [u64; 64] = [
+pub const fn get_rook_moves(square: usize, blockers: u64) -> u64 {
+    let i = ROOK_MAGICS[square]
+        .wrapping_mul(blockers & ROOK_RELEVANT_OCCUPANCY[square])
+        .wrapping_shr((64 - ROOK_BITS[square]) as u32);
+    ROOK_TABLE[square][i as usize]
+}
+
+pub const fn get_bishop_moves(square: usize, blockers: u64) -> u64 {
+    let i = BISHOP_MAGICS[square]
+        .wrapping_mul(blockers & BISHOP_RELEVANT_OCCUPANCY[square])
+        .wrapping_shr((64 - ROOK_BITS[square]) as u32);
+    BISHOP_TABLE[square][i as usize]
+}
+
+
+const ROOK_MAGICS: [u64; 64] = [
     0x80004000976080,
     0x1040400010002000,
     0x4880200210000980,
@@ -83,7 +93,7 @@ pub const ROOK_MAGICS: [u64; 64] = [
     0x1001040311802142,
 ];
 
-pub const BISHOP_MAGICS: [u64; 64] = [
+const BISHOP_MAGICS: [u64; 64] = [
     0x420410208004484,
     0x90100a00a22000,
     0x90028a004b0200,
@@ -151,7 +161,7 @@ pub const BISHOP_MAGICS: [u64; 64] = [
 ];
 
 
-const fn count_bits(arr: [u64; 64]) -> [u32; 64] {
+const fn count_bits_64(arr: [u64; 64]) -> [u32; 64] {
     let mut result: [u32; 64] = [0; 64];
     let mut i = 0;
     while i < result.len() {
@@ -161,8 +171,8 @@ const fn count_bits(arr: [u64; 64]) -> [u32; 64] {
     result
 }
 
-pub const ROOK_BITS: [u32; 64] = count_bits(ROOK_RELEVANT_OCCUPANCY);
-pub const BISHOP_BITS: [u32; 64] = count_bits(BISHOP_RELEVANT_OCCUPANCY);
+pub const ROOK_BITS: [u32; 64] = count_bits_64(ROOK_RELEVANT_OCCUPANCY);
+pub const BISHOP_BITS: [u32; 64] = count_bits_64(BISHOP_RELEVANT_OCCUPANCY);
 
 
 const fn sliding_move(blockers: u64, r: i32, c: i32, dr: i32, dc: i32) -> u64 {
@@ -195,6 +205,7 @@ const fn sliding_moves(is_rook: bool, square: usize, blockers: u64) -> u64 {
     moves |= sliding_move(blockers, r, c, -1, 1 * m);
     moves
 }
+
 
 const fn gen_magic_rook(
     &(mut arr): &[u64; 1 << 12],
@@ -254,18 +265,3 @@ pub const BISHOP_TABLE: [[u64; 1 << 9]; 64] = {
     }
     arr
 };
-
-
-pub const fn get_rook_moves(square: usize, blockers: u64) -> u64 {
-    let i = ROOK_MAGICS[square]
-        .wrapping_mul(blockers & ROOK_RELEVANT_OCCUPANCY[square])
-        .wrapping_shr((64 - ROOK_BITS[square]) as u32);
-    ROOK_TABLE[square][i as usize]
-}
-
-pub const fn get_bishop_moves(square: usize, blockers: u64) -> u64 {
-    let i = BISHOP_MAGICS[square]
-        .wrapping_mul(blockers & BISHOP_RELEVANT_OCCUPANCY[square])
-        .wrapping_shr((64 - ROOK_BITS[square]) as u32);
-    BISHOP_TABLE[square][i as usize]
-}

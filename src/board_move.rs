@@ -1,8 +1,9 @@
-use Castling::*;
-
+use crate::color::{Color, Color::*};
 use crate::err::*;
-use crate::piece::{*, Color::*};
+use crate::piece::*;
 use crate::square::{*, Square::{*}};
+
+use Castling::*;
 
 
 const CASTLING_SQUARES: [[Square; 4]; 4] = [
@@ -72,7 +73,7 @@ impl Castling {
         CASTLING_SQUARES[self as usize][ROOK_END]
     }
 
-    pub const fn king(self) -> ColoredPiece {
-        Piece::King.as_color(self.color())
+    pub const fn king(self) -> Piece {
+        GenericPiece::King.as_color(self.color())
     }
 }

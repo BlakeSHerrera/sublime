@@ -12,7 +12,7 @@ use Square::*;
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum File {
-    FA = 0, FB, FC, FD, FE, FF, FG, FH,
+    AFile = 0, BFile, CFile, DFile, EFile, FFile, GFile, HFile,
 }
 
 impl File {
@@ -26,7 +26,7 @@ impl File {
     }
 
     pub const ALL: [File; 8] = [
-        FA, FB, FC, FD, FE, FF, FG, FH
+        AFile, BFile, CFile, DFile, EFile, FFile, GFile, HFile
     ];
 
     pub const fn chr(self) -> char {
@@ -48,7 +48,7 @@ impl File {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rank {
-    R1 = 0, R2, R3, R4, R5, R6, R7, R8,
+    Rank1 = 0, Rank2, Rank3, Rank4, Rank5, Rank6, Rank7, Rank8,
 }
 
 impl Rank {
@@ -62,7 +62,7 @@ impl Rank {
     }
     
     pub const ALL: [Rank; 8] = [
-        R1, R2, R3, R4, R5, R6, R7, R8
+        Rank1, Rank2, Rank3, Rank4, Rank5, Rank6, Rank7, Rank8
     ];
 
     pub const fn chr(self) -> char {
