@@ -206,8 +206,22 @@ impl GameState {
     
 
     fn compute_zobrist(&self) -> u64 {
-        // TODO
-        return 0;
+        let mut hash: u64 = 0;
+        for s in Square::ALL {
+            hash ^= match self.piece_at(s) {
+                None => 0,
+                Some(p) => zobrist::PIECES[p as usize][s as usize],
+            };
+        }
+        hash ^= match self.turn() {
+            White => 0,
+            Black => zobrist::BLACK_TO_MOVE,
+        };
+        hash ^= zobrist::CASTLING[self.castling_code() as usize];
+        hash ^ match self.ep_legal() {
+            false => 0,
+            true => zobrist::EP_FILE[self.ep_file_num()],
+        }
     }
 
 
@@ -225,8 +239,11 @@ impl GameState {
     }
 
     pub const fn deny_castling(&mut self, castling: Castling) {
+        // TODO perhaps optimize
+        self.zobrist_hash ^= zobrist::CASTLING[self.castling_code() as usize];
         // Optimization over set_castling
         self.fen_info &= !(1 << CASTLING_OFFSET + castling as u32);
+        self.zobrist_hash ^= zobrist::CASTLING[self.castling_code() as usize];
     }
 
     const fn set_castling(&mut self, castling: Castling, can_castle: bool) {
@@ -246,6 +263,7 @@ impl GameState {
     }
 
     pub const fn flip_turn(&mut self) {
+        self.zobrist_hash ^= zobrist::BLACK_TO_MOVE;
         self.fen_info ^= 1 << TURN_OFFSET;
     }
 
@@ -263,6 +281,10 @@ impl GameState {
     }
 
     pub const fn deny_ep(&mut self) {
+        self.zobrist_hash ^= match self.ep_legal() {
+            true => zobrist::EP_FILE[self.ep_file_num()],
+            false => 0,
+        };
         self.fen_info &= !0b1111 << EP_LEGAL_OFFSET;
     }
 
@@ -305,7 +327,9 @@ impl GameState {
     }
 
     pub const fn set_ep_target(&mut self, file: File) {
-        self.set_fen_bits(EP_LEGAL_OFFSET, 4, ((file as u32) << 1) + 1);
+        self.deny_ep();
+        self.zobrist_hash ^= zobrist::EP_FILE[file as usize];
+        self.fen_info |= ((file as u32) << 1) + 1 << EP_LEGAL_OFFSET;
     }
     
 
@@ -329,6 +353,27 @@ impl GameState {
     const fn set_fullmove_ctr(&mut self, ctr: u32) {
         self.set_fen_bits(FULLMOVE_CTR_OFFSET, FULLMOVE_CTR_BITS, ctr);
     }
+
+
+    const fn change_piece(&mut self, piece: Piece, square: Square) {
+        // Remove or put is the same. Should not put piece on occupied square.
+        self.bitboard[piece as usize] |= square.mask();
+        self.bitboard[piece.occ_index()] ^= square.mask();
+        self.bitboard[FULL_OCCUPANCY] ^= square.mask();
+        self.zobrist_hash ^= zobrist::PIECES[piece as usize][square as usize];
+    }
+
+    const fn remove_piece(&mut self, piece: Piece, square: Square) {
+        // This function is for readability; algorithm is the same as put_piece
+        self.change_piece(piece, square)
+    }
+
+    const fn put_piece(&mut self, piece: Piece, square: Square) {
+        // This function is for readability; the algorithm is the same as remove_piece
+        self.change_piece(piece, square)
+    }
+
+
 
 
     fn castling_str(&self) -> String {

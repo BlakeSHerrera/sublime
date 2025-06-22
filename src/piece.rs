@@ -82,6 +82,10 @@ impl Piece {
         Color::PIECE_ARR[self as usize]
     }
 
+    pub const fn occ_index(self) -> usize {
+        Piece::ALL.len() + self.color() as usize
+    }
+
     pub const fn as_generic(self) -> GenericPiece {
         GenericPiece::PIECE_ARR[self as usize]
     }
