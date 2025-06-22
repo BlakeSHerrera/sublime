@@ -1,5 +1,7 @@
 use crate::square::Square::*;
 
+use Direction::*;
+
 
 pub fn print(mask: u64) {
     for i in 0..8 {
@@ -148,8 +150,11 @@ const fn gen_diags(seed: u64) -> [u64; 15] {
     arr
 }
 
-pub const DIAGONAL: [u64; 15] = gen_diags(0x8040201008040201);
-pub const ANTI_DIAGONAL: [u64; 15] = gen_diags(0x0102040810204080);
+pub const MAIN_DIAGONAL: u64 = 0x8040201008040201;
+pub const MAIN_ANTIDIAGONAL: u64 = 0x0102040810204080;
+
+pub const DIAGONAL: [u64; 15] = gen_diags(MAIN_DIAGONAL);
+pub const ANTI_DIAGONAL: [u64; 15] = gen_diags(MAIN_ANTIDIAGONAL);
 
 
 pub const SQUARE: [u64; 64] = {
@@ -238,7 +243,6 @@ pub enum Direction {
     Northwest = 0, North, Northeast, East,
     Southeast, South, Southwest, West
 }
-use Direction::*;
 
 impl Direction {
     
@@ -269,6 +273,7 @@ impl Direction {
     }
 }
 
+// Ray cast includes starting square
 pub const RAY_CAST: [[u64; 64]; 8] = {
     let mut arr: [[u64; 64]; 8] = [[0; 64]; 8];
     let mut i = 0;

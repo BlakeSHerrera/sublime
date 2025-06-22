@@ -1,17 +1,7 @@
 use crate::board_move::Castling;
-use crate::piece::*;
-use crate::square::Square;
-
-
-#[derive(Debug)]
-pub enum FenSection {
-    Board,
-    SideToMove,
-    Castling,
-    EnPassant,
-    HalfmoveCounter,
-    FullmoveCounter,
-}
+use crate::color::Color;
+use crate::piece::Piece;
+use crate::position::FenSection;
 
 
 #[derive(Debug)]
@@ -33,9 +23,9 @@ pub enum FenError {
     InvalidCastlingChar(char),
     InvalidCastling,
     InvalidEnPassant,
-    WrongEnPassantRank,
-    HalfmoveNotANumber,
-    FullmoveNotANumber,
+    InvalidEnPassantRank,
+    InvalidHalfmove,
+    InvalidFullMove,
     IllegalPosition(IllegalPosition),
     MissingSection(FenSection),
     TooManySections,
@@ -47,36 +37,42 @@ pub enum FenError {
 #[derive(Debug)]
 pub enum IllegalMove {
     InCheck,
-    WrongMovement,
+    InvalidMove,
     OpponentPieceMove,
     EmptySquareMove,
     AlliedCapture,
+    CastleOutOfCheck,
+    CastleThroughCheck,
+    InvalidPromotion,
 }
 
 
 #[derive(Debug)]
 pub enum PacnError {
     // Pure Algebraic Coordinate Notation
+    MalformedPacn,
     CoordinateError(CoordinateError),
     IllegalMove(IllegalMove),
 }
 
 #[derive(Debug)]
 pub enum CorruptedBitboard {
+    // Corrupted bitboards should never arise from user error;
+    // possible user error is handled by IllegalPosition.
     OccupancyMismatch(u64),
-    ZobristMismatch(u64),
+    ZobristMismatch(u64, u64),  // Expected, actual
     InvalidEnPassantCode(u32),
 }
 
 #[derive(Debug)]
 pub enum IllegalPosition {
     OpponentInCheck,
-    TooManyPieces(ColoredPiece, u32),
+    TooManyPieces(Piece, u32),
     MissingKing(Color),
-    SameColorBishops(ColoredPiece, Color),  // No pawn promotions
+    SameColorBishops(Piece, Color),  // No pawn promotions
     InvalidEPTarget,
     InvalidPawnRank,
-    CastlingIncorrect(Castling),
+    InvalidCastling(Castling),
     EnPassantSquareOccupied,
     NoEnPassantAttacker,
     NoEnPassantDefender,

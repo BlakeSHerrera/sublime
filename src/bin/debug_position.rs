@@ -1,5 +1,5 @@
 use sublime::perft;
-use sublime::position::*;
+use sublime::position::GameState;
 
 
 fn print_board(fen: &str) {
