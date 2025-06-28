@@ -12,6 +12,8 @@ pub enum Color {
 
 impl Color {
 
+    pub const BITS: u64 = 1;
+
     pub const ALL: [Color; 2] = [Black, White];
 
     pub const PIECE_ARR: [Color; 12] = [
@@ -41,6 +43,10 @@ impl Color {
 
     pub const fn bb_offset(self) -> usize {
         6 * self as usize
+    }
+
+    pub const fn occ_offset(self) -> usize {
+        12 + self as usize
     }
 
     pub const fn pawn_direction(self) -> Direction {

@@ -6,7 +6,6 @@ use Moveset::*;
 use GenericPiece::*;
 
 
-
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Moveset {
@@ -30,6 +29,10 @@ pub enum GenericPiece {
 
 impl GenericPiece {
 
+    pub const BITS: u64 = 3;
+    pub const BIT_MAX: u64 = 0b111;
+    pub const EMPTY_CODE: u64 = GenericPiece::BIT_MAX;
+
     const ALL: [GenericPiece; 6] = [Rook, Knight, Bishop, Queen, King, Pawn];
 
     const PIECE_ARR: [GenericPiece; 12] = [
@@ -49,10 +52,21 @@ impl GenericPiece {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Promotion {
-    Rook = 1, Knight, Bishop, Queen
+    Rook = 0, Knight, Bishop, Queen
 }
 
 impl Promotion {
+
+    pub const ALL: [Promotion; 4] = [
+        Promotion::Rook, 
+        Promotion::Knight, 
+        Promotion::Bishop, 
+        Promotion::Queen
+    ];
+
+    pub const BITS: u64 = 3;  // Extra bit for no promotion
+    pub const BIT_MAX: u64 = 0b111;
+    pub const EMPTY_CODE: u64 = Promotion::BIT_MAX;
     
     pub const fn as_generic_piece(self) -> GenericPiece {
         GenericPiece::ALL[self as usize]
@@ -73,6 +87,10 @@ pub enum Piece {
 
 impl Piece {
 
+    pub const BITS: u64 = 4;
+    pub const BIT_MAX: u64 = 0b1111;
+    pub const EMPTY_CODE: u64 = Piece::BIT_MAX;
+
     pub const ALL: [Piece; 12] = [
         WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing, WhitePawn,
         BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing, BlackPawn,
@@ -80,6 +98,10 @@ impl Piece {
 
     pub const fn color(self) -> Color {
         Color::PIECE_ARR[self as usize]
+    }
+
+    pub const fn inv(self) -> Piece {
+        Piece::ALL[(self as usize + 6) % 12]
     }
 
     pub const fn occ_index(self) -> usize {

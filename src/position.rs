@@ -53,9 +53,11 @@ fen_info bits:
 */
 pub struct GameState {
     // See constants above for last 3 indicies
-    bitboard: [u64; Piece::ALL.len() + 3],
-    fen_info: u32,
-    zobrist_hash: u64,  // TODO set in methods
+    pub bitboard: [u64; Piece::ALL.len() + 3],
+    pub piece_on_square: [Option<Piece>; 64],
+    // TODO piece on square array?
+    pub fen_info: u32,
+    pub zobrist_hash: u64,  // TODO set in methods
 }
 
 const fn occ_mismatch(mask: u64) -> Result<(), IllegalPosition> {
@@ -72,6 +74,7 @@ impl GameState {
     fn empty() -> GameState {
         GameState {
             bitboard: [0; 15],
+            piece_on_square: [None; 64],
             fen_info: 0,
             zobrist_hash: 0,
         }
@@ -91,21 +94,23 @@ impl GameState {
     }
 
     pub fn validate(&self) -> Result<(), IllegalPosition> {
-        let mut w_occ: u64 = 0;
-        let mut b_occ: u64 = 0;
-        let mut i = 0;
-        while i < 6 {
-            occ_mismatch(w_occ & self.bitboard[i])?;
-            w_occ |= self.bitboard[i];
-            occ_mismatch(b_occ & self.bitboard[i + 6])?;
-            b_occ |= self.bitboard[i + 6];
-            i += 1;
+        let mut occ: [u64; 2] = [0; 2];
+        for piece in Piece::ALL {
+            occ_mismatch(occ[piece.color() as usize] & self.bitboard[piece as usize])?;
+            occ[piece.color() as usize] |= self.bitboard[piece as usize];
         }
-        occ_mismatch(w_occ & b_occ)?;
-        occ_mismatch(w_occ ^ self.occ(White))?;
-        occ_mismatch(b_occ ^ self.occ(Black))?;
-        occ_mismatch(w_occ & b_occ ^ self.full_occ())?;
-        // TODO zobrist mismatch
+        occ_mismatch(occ[White as usize] & occ[Black as usize])?;
+        occ_mismatch(occ[White as usize] ^ self.occ(White))?;
+        occ_mismatch(occ[Black as usize] ^ self.occ(Black))?;
+        occ_mismatch(self.occ(White) & self.occ(Black) ^ self.full_occ())?;
+
+        for s in  Square::ALL {
+            if self.piece_at(s) != self.piece_at_bitboard(s) {
+                return Err(
+                    IllegalPosition::CorruptedBitboard(
+                        CorruptedBitboard::OccupancyMismatch(s.mask())))
+            }
+        }
 
         match self.ep_code() {
             0 => (),
@@ -169,7 +174,6 @@ impl GameState {
             }
         }
 
-        // TODO
         let zobrist = self.compute_zobrist();
         if self.zobrist_hash != zobrist {
             return Err(
@@ -186,6 +190,10 @@ impl GameState {
     }
 
     pub const fn piece_at(&self, square: Square) -> Option<Piece> {
+        self.piece_on_square[square as usize]
+    }
+
+    const fn piece_at_bitboard(&self, square: Square) -> Option<Piece> {
         let mut i = 0;
         while i < Piece::ALL.len() {
             if self.bitboard[i] & square.mask() != 0 {
@@ -196,14 +204,21 @@ impl GameState {
         None
     }
 
-    const fn full_occ(&self) -> u64 {
+    pub const fn full_occ(&self) -> u64 {
         self.bitboard[FULL_OCCUPANCY]
     }
 
-    const fn occ(&self, color: Color) -> u64 {
+    pub const fn occ(&self, color: Color) -> u64 {
         self.bitboard[Piece::ALL.len() + color as usize]
     }
     
+    pub const fn self_occ(&self) -> u64 {
+        self.occ(self.turn())
+    }
+
+    pub const fn enemy_occ(&self) -> u64 {
+        self.occ(self.turn().inv())
+    }
 
     fn compute_zobrist(&self) -> u64 {
         let mut hash: u64 = 0;
@@ -355,25 +370,24 @@ impl GameState {
     }
 
 
-    const fn change_piece(&mut self, piece: Piece, square: Square) {
+    const fn change_piece_bitboard(&mut self, piece: Piece, square: Square) {
         // Remove or put is the same. Should not put piece on occupied square.
+        // Need to update self.piece_on_square on function exit.
         self.bitboard[piece as usize] |= square.mask();
         self.bitboard[piece.occ_index()] ^= square.mask();
         self.bitboard[FULL_OCCUPANCY] ^= square.mask();
         self.zobrist_hash ^= zobrist::PIECES[piece as usize][square as usize];
     }
 
-    const fn remove_piece(&mut self, piece: Piece, square: Square) {
-        // This function is for readability; algorithm is the same as put_piece
-        self.change_piece(piece, square)
+    pub const fn remove_piece(&mut self, piece: Piece, square: Square) {
+        self.change_piece_bitboard(piece, square);
+        self.piece_on_square[piece as usize] = None;
     }
 
-    const fn put_piece(&mut self, piece: Piece, square: Square) {
-        // This function is for readability; the algorithm is the same as remove_piece
-        self.change_piece(piece, square)
+    pub const fn put_piece(&mut self, piece: Piece, square: Square) {
+        self.change_piece_bitboard(piece, square);
+        self.piece_on_square[piece as usize] = Some(piece);
     }
-
-
 
 
     fn castling_str(&self) -> String {
@@ -600,6 +614,10 @@ impl GameState {
         bitmask::print(self.full_occ());
         println!("");
 
+        println!("Piece on square");
+        self.print_pretty();
+        println!("");
+
         println!(
             "To move: {} {:01b}", 
             self.turn().chr(), 
@@ -635,13 +653,10 @@ impl GameState {
         for r in 0..8 {
             let r = 7 - r;
             for c in 0..8 {
-                let mut s = '.';
-                for p in 0..12 {
-                    if self.bitboard[p] & 1 << 8 * r + c != 0 {
-                        s = Piece::ALL[p].chr();
-                        break;
-                    }
-                }
+                let s = match self.piece_at_rc(r, c) {
+                    None => '.',
+                    Some(p) => p.chr(),
+                };
                 print!("{} ", s);
             }
             println!("");

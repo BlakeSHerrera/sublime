@@ -1,4 +1,5 @@
 use crate::bitmask;
+use crate::color::{Color, Color::*};
 use crate::err::*;
 
 use File::*;
@@ -16,6 +17,9 @@ pub enum File {
 }
 
 impl File {
+
+    pub const BITS: u64 = 3;
+    pub const BIT_MAX: u64 = 0b111;
     
     pub const fn mask(self) -> u64 {
         bitmask::FILE[self as usize]
@@ -42,6 +46,15 @@ impl File {
             false => Err(CoordinateError::InvalidFile(chr)),
         }
     }
+
+    pub const fn ep_square(self, color: Color) -> Square {
+        Square::from_file_rank(
+            self, 
+            match color {
+                White => Rank3, 
+                Black => Rank6
+            })
+    }
 }
 
 
@@ -52,6 +65,9 @@ pub enum Rank {
 }
 
 impl Rank {
+
+    pub const BITS: u64 = 3;
+    pub const BIT_MAX: u64 = 0b111;
 
     pub const fn mask(self) -> u64 {
         bitmask::RANK[self as usize]
@@ -159,6 +175,9 @@ pub enum Square {
 
 impl Square {
 
+    pub const BITS: u64 = 6;
+    pub const BIT_MAX: u64 = 0b111111;
+
     pub const fn rank(self) -> Rank {
         Rank::ALL[self as usize / 8]
     }
@@ -202,7 +221,7 @@ impl Square {
         [self.file().chr(), self.rank().chr()]
     }
 
-    pub const fn from_rank_file(rank: Rank, file: File) -> Square {
+    pub const fn from_file_rank(file: File, rank: Rank) -> Square {
         Square::from_rc(rank as usize, file as usize)
     }
 
@@ -212,7 +231,7 @@ impl Square {
 
     pub const fn from_chrs(rank: char, file: char) -> Result<Square, CoordinateError> {
         match (Rank::from_chr(rank), File::from_chr(file)) {
-            (Ok(r), Ok(f)) => Ok(Square::from_rank_file(r, f)),
+            (Ok(r), Ok(f)) => Ok(Square::from_file_rank(f, r)),
             (Err(e), _) => Err(e),
             (_, Err(e)) => Err(e),
         }
