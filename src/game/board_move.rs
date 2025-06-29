@@ -1,14 +1,18 @@
 use {
     crate::board::{
-        color::Color::*,
+        color::{*, Color::*},
         line::{
             *,
             File::*,
             Rank::*,
         },
         piece::{*, GenericPiece::*},
-        square::*,
-        zone::{*, FileSide::*},
+        square::{*, Square::*},
+        zone::{
+            *, 
+            Quadrant::*, 
+            FileSide::*
+        },
     },
     super::position::*,
 };
@@ -94,6 +98,10 @@ impl Move {
         Move(mv)
     }
 
+    pub const fn color(self) -> Color {
+        self.origin_piece().color()
+    }
+
     pub const fn origin_square(self) -> Square {
         Square::ALL[(self.0 >> ORIGIN_SQUARE_OFFSET & Square::BIT_MAX) as usize]
     }
@@ -139,5 +147,55 @@ impl Move {
 
     pub const fn get_castling(self) -> Quadrant {
         Quadrant::ALL[(self.0 >> CASTLING_OPTION_OFFSET & 0b11) as usize]
+    }
+}
+
+
+impl GameState {
+
+    pub const fn push(&mut self, mv: Move) {
+        self.remove_piece(mv.origin_piece(), mv.origin_square());
+        match mv.captured_piece() {
+            Some(p) => self.remove_piece(p, mv.captured_square()),
+            None => (),
+        };
+        self.put_piece(mv.destination_piece(), mv.destination_square());
+        
+        self.deny_ep();
+        match mv.origin_piece().as_generic() {
+            Pawn => {
+                self.reset_halfmove_ctr();
+                match mv.is_double_pawn_push() {
+                    true => self.set_ep_target(mv.origin_square().file()),
+                    false => (),
+                };
+            },
+            King => {
+                let color = self.turn();
+                self.inc_halfmove_ctr();
+                self.deny_castling(Kingside.to_quadrant(color));
+                self.deny_castling(Queenside.to_quadrant(color));
+                match mv.is_castling() {
+                    true => {
+                        let quad = mv.get_castling();
+                        let rook = Rook.as_color(color);
+                        self.remove_piece(rook, quad.rook_start());
+                        self.put_piece(rook, quad.rook_end());
+                    },
+                    false => (),
+                }
+            },
+            _ => self.inc_halfmove_ctr(),
+        };
+        
+        match [mv.origin_square(), mv.destination_square()] {
+            [H1, _] | [_, H1] => self.deny_castling(WhiteKingside),
+            [A1, _] | [_, A1] => self.deny_castling(WhiteQueenside),
+            [H8, _] | [_, H8] => self.deny_castling(BlackKingside),
+            [A8, _] | [_, A8] => self.deny_castling(BlackQueenside),
+            _ => (),
+        };
+
+        self.flip_turn();
     }
 }

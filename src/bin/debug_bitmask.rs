@@ -53,6 +53,7 @@ fn main() {
         ("RIGHT_FILES", RIGHT_FILES.to_vec()),
         ("BOTTOM_RANKS", BOTTOM_RANKS.to_vec()),
         ("TOP_RANKS", TOP_RANKS.to_vec()),
+        ("QUADRANTS", QUADRANTS.to_vec()),
         ("DIAGONAL", DIAGONAL.to_vec()),
         ("ANTI_DIAGONAL", ANTI_DIAGONAL.to_vec()),
         ("SQUARE", SQUARE.to_vec()),

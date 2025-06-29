@@ -172,8 +172,9 @@ impl GameState {
     }
 
     pub const fn flip_turn(&mut self) {
-        self.zobrist_hash ^= zobrist::BLACK_TO_MOVE;
+        self.set_fullmove_ctr(self.fullmove_ctr() + self.turn() as u32);
         self.fen_info ^= 1 << TURN_OFFSET;
+        self.zobrist_hash ^= zobrist::BLACK_TO_MOVE;
     }
 
     // TODO make private to fen module
@@ -250,11 +251,19 @@ impl GameState {
     }
 
     pub const fn is_50_move_rule(&self) -> bool {
-        return self.halfmove_ctr() >= 100
+        self.halfmove_ctr() >= 100
     }
 
     pub const fn set_halfmove_ctr(&mut self, ctr: u32) {
         self.set_fen_bits(HALFMOVE_CTR_OFFSET, HALFMOVE_CTR_BITS, ctr);
+    }
+
+    pub const fn reset_halfmove_ctr(&mut self) {
+        self.set_halfmove_ctr(0);
+    }
+
+    pub const fn inc_halfmove_ctr(&mut self) {
+        self.set_halfmove_ctr(self.halfmove_ctr() + 1);
     }
 
 

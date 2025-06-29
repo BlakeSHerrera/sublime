@@ -120,6 +120,13 @@ pub const RIGHT_FILES: [u64; 9] = cumulative(FILE, true);
 pub const BOTTOM_RANKS: [u64; 9] = cumulative(RANK, false);
 pub const TOP_RANKS: [u64; 9] = cumulative(RANK, true);
 
+pub const QUADRANTS: [u64; 4] = [
+    RIGHT_FILES[4] & BOTTOM_RANKS[4],
+    LEFT_FILES[4] & BOTTOM_RANKS[4],
+    RIGHT_FILES[4] & TOP_RANKS[4],
+    LEFT_FILES[4] & TOP_RANKS[4],
+];
+
 
 const fn gen_diags(seed: u64) -> [u64; 15] {
     let mut arr: [u64; 15] = [0; 15];
