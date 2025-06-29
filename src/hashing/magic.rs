@@ -7,8 +7,7 @@ The actual magic numbers came from my previous project:
 https://github.com/BlakeSHerrera/CS-3793-Chess-AI/blob/main/magic.c
 */
 
-use crate::bitmask;
-use crate::bitmask::*;
+use super::bitmask::*;
 
 
 pub const fn get_rook_moves(square: usize, blockers: u64) -> u64 {
@@ -165,7 +164,7 @@ const fn count_bits_64(arr: [u64; 64]) -> [u32; 64] {
     let mut result: [u32; 64] = [0; 64];
     let mut i = 0;
     while i < result.len() {
-        result[i] = bitmask::count_bits(arr[i]);
+        result[i] = count_bits(arr[i]);
         i += 1;
     }
     result

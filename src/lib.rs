@@ -1,10 +1,6 @@
-pub mod bitmask;
-pub mod board_move;
-pub mod color;
-pub mod err;
-pub mod magic;
+pub mod board;
+pub mod hashing;
+
+pub mod game;
+pub mod parse;
 pub mod perft;
-pub mod piece;
-pub mod position;
-pub mod square;
-pub mod zobrist;

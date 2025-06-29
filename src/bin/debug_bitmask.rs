@@ -1,5 +1,10 @@
-use sublime::bitmask::{*, Direction::*};
-use sublime::color::Color::*;
+use sublime::{
+    board::{
+        color::Color::*,
+        direction::Direction::*,
+    },
+    hashing::bitmask::*,
+};
 
 
 fn print_pause(msg: &str, mask: u64) {

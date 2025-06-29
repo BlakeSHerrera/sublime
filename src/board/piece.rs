@@ -1,9 +1,9 @@
-use crate::color::{Color, Color::*};
-use crate::err::*;
-
-use Piece::*;
-use Moveset::*;
-use GenericPiece::*;
+use {
+    super::color::{*, Color::*},
+    Piece::*,
+    Moveset::*,
+    GenericPiece::*,
+};
 
 
 #[repr(u8)]
@@ -114,31 +114,5 @@ impl Piece {
 
     pub const fn moveset(self) -> Moveset {
         Moveset::PIECE_ARR[self as usize]
-    }
-
-    pub const fn chr(self) -> char {
-        const CHARS: [char; 12] = [
-            'R', 'N', 'B', 'Q', 'K', 'P',
-            'r', 'n', 'b', 'q', 'k', 'p',
-        ];
-        CHARS[self as usize]
-    }
-
-    pub const fn from_char(chr: char) -> Result<Self, FenError> {
-        match chr {
-            'R' => Ok(WhiteRook),
-            'N' => Ok(WhiteKnight),
-            'B' => Ok(WhiteBishop),
-            'Q' => Ok(WhiteQueen),
-            'K' => Ok(WhiteKing),
-            'P' => Ok(WhitePawn),
-            'r' => Ok(BlackRook),
-            'n' => Ok(BlackKnight),
-            'b' => Ok(BlackBishop),
-            'q' => Ok(BlackQueen),
-            'k' => Ok(BlackKing),
-            'p' => Ok(BlackPawn),
-            _ => Err(FenError::InvalidPiece(chr)),
-        }
     }
 }

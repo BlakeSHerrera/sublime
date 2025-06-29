@@ -1,101 +1,17 @@
-use crate::color::{*, Color::*};
-use crate::err::*;
-use crate::piece::{*, GenericPiece::*};
-use crate::position::*;
-use crate::square::{*, Rank::*, File::*, Square::*};
-
-use Castling::*;
-
-
-const CASTLING_SQUARES: [[Square; 4]; 4] = [
-    // king start, king end, rook start, rook end
-    [E1, G1, H1, F1],
-    [E1, C1, A1, D1],
-    [E8, G8, H8, F8],
-    [E8, C8, A8, D8],
-];
-const KING_START: usize = 0;
-const KING_END: usize = 1;
-const ROOK_START: usize = 2;
-const ROOK_END: usize = 3;
-
-
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Castling {
-    WhiteKingside = 0,
-    WhiteQueenside,
-    BlackKingside,
-    BlackQueenside,
-}
-
-impl Castling {
-
-    pub const BITS: u64 = 3;  // TODO rename to MOVE_BITS
-    pub const BIT_MAX: u64 = 0b111;
-    pub const EMPTY_CODE: u64 = Castling::BIT_MAX;
-
-    pub const ALL: [Castling; 4] = [
-        WhiteKingside,
-        WhiteQueenside,
-        BlackKingside,
-        BlackQueenside,
-    ];
-
-    pub const KINGSIDE: [Castling; 2] = [
-        WhiteKingside,
-        BlackKingside,
-    ];
-
-    pub const QUEENSIDE: [Castling; 2] = [
-        WhiteQueenside,
-        BlackQueenside,
-    ];
-
-    pub const fn code(self) -> u64 {
-        1 << IS_CASTLING_OFFSET | (self as u64) << CASTLING_OPTION_OFFSET
-    }
-
-    pub const fn color(self) -> Color {
-        const COLORS: [Color; 4] = [White, White, Black, Black];
-        COLORS[self as usize]
-    }
-
-    pub const fn chr(self) -> char {
-        const CASTLING_CHARS: [char; 4] = ['K', 'Q', 'k', 'q'];
-        CASTLING_CHARS[self as usize]
-    }
-
-    pub const fn from_char(chr: char) -> Result<Castling, FenError> {
-        match chr {
-            'K' => Ok(WhiteKingside),
-            'Q' => Ok(WhiteQueenside),
-            'k' => Ok(BlackKingside),
-            'q' => Ok(BlackQueenside),
-            _ => Err(FenError::InvalidCastlingChar(chr))
-        }
-    }
-
-    pub const fn king_start(self) -> Square {
-        CASTLING_SQUARES[self as usize][KING_START]
-    }
-
-    pub const fn king_end(self) -> Square {
-        CASTLING_SQUARES[self as usize][KING_END]
-    }
-
-    pub const fn rook_start(self) -> Square {
-        CASTLING_SQUARES[self as usize][ROOK_START]
-    }
-
-    pub const fn rook_end(self) -> Square {
-        CASTLING_SQUARES[self as usize][ROOK_END]
-    }
-
-    pub const fn king(self) -> Piece {
-        GenericPiece::King.as_color(self.color())
-    }
-}
+use {
+    crate::board::{
+        color::Color::*,
+        line::{
+            *,
+            File::*,
+            Rank::*,
+        },
+        piece::{*, GenericPiece::*},
+        square::*,
+        zone::{*, FileSide::*},
+    },
+    super::position::*,
+};
 
 
 const ORIGIN_SQUARE_OFFSET: u64 = 0;
@@ -158,8 +74,10 @@ impl Move {
                 },
                 King => match (origin.file(), destination.file()) {
                     // TODO maybe make a generic castling
-                    (EFile, GFile) => mv |= Castling::KINGSIDE[board.turn() as usize].code(),
-                    (EFile, CFile) => mv |= Castling::QUEENSIDE[board.turn() as usize].code(),
+                    (EFile, GFile) => mv |= 1 << IS_CASTLING_OFFSET
+                        | (Kingside.to_quadrant(board.turn()) as u64) << CASTLING_OPTION_OFFSET,
+                    (EFile, CFile) => mv |= 1 << IS_CASTLING_OFFSET
+                        | (Queenside.to_quadrant(board.turn()) as u64) << CASTLING_OPTION_OFFSET,
                     _ => (),
                 },
                 _ => (),
@@ -208,12 +126,18 @@ impl Move {
     }
 
     pub const fn is_double_pawn_push(self) -> bool {
-        self.0 >> DOUBLE_PAWN_PUSH_OFFSET & 1 == 1
+        self.0 & 1 << DOUBLE_PAWN_PUSH_OFFSET != 0
     }
 
     pub const fn is_ep_capture(self) -> bool {
-        self.0 >> EP_CAPTURE_OFFSET & 1 == 1
+        self.0 & 1 << EP_CAPTURE_OFFSET != 0
+    }
+
+    pub const fn is_castling(self) -> bool {
+        self.0 & 1 << IS_CASTLING_OFFSET != 0
+    }
+
+    pub const fn get_castling(self) -> Quadrant {
+        Quadrant::ALL[(self.0 >> CASTLING_OPTION_OFFSET & 0b11) as usize]
     }
 }
-
-

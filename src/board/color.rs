@@ -1,7 +1,7 @@
-use crate::bitmask::Direction;
-use crate::err::*;
-
-use Color::*;
+use {
+    super::direction::*,
+    Color::*,
+};
 
 
 #[repr(u8)]
@@ -20,19 +20,6 @@ impl Color {
         White, White, White, White, White, White,
         Black, Black, Black, Black, Black, Black,
     ];
-
-    pub const fn chr(self) -> char {
-        const CHARS: [char; 2] = ['w', 'b'];
-        CHARS[self as usize]
-    }
-
-    pub const fn from_chr(chr: char) -> Result<Color, FenError> {
-        match chr {
-            'w' => Ok(White),
-            'b' => Ok(Black),
-            _ => Err(FenError::InvalidColor(chr)),
-        }
-    }
 
     pub const fn inv(self) -> Color {
         match self {

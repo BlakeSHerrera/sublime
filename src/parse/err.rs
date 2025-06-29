@@ -1,23 +1,21 @@
-use crate::board_move::Castling;
-use crate::color::Color;
-use crate::piece::Piece;
-use crate::position::FenSection;
+use crate::board::{
+    color::Color,
+    piece::Piece,
+    zone::Quadrant,
+};
 
-
-#[derive(Debug)]
-pub enum CoordinateError {
-    InvalidRank(char),
-    InvalidFile(char),
-    IncompleteSquare,
-}
+use super::{
+    chr::ConversionError,
+    fen::FenSection
+};
 
 
 #[derive(Debug)]
 pub enum FenError {
+    ConversionError(ConversionError),
     TooManyRows,
     TooManyColumns(i32),
     IncompleteRow(i32),
-    CoordinateError(CoordinateError),
     InvalidPiece(char),
     InvalidColor(char),
     InvalidCastlingChar(char),
@@ -51,9 +49,10 @@ pub enum IllegalMove {
 pub enum PacnError {
     // Pure Algebraic Coordinate Notation
     MalformedPacn,
-    CoordinateError(CoordinateError),
+    ConversionError(ConversionError),
     IllegalMove(IllegalMove),
 }
+
 
 #[derive(Debug)]
 pub enum CorruptedBitboard {
@@ -64,6 +63,7 @@ pub enum CorruptedBitboard {
     InvalidEnPassantCode(u32),
 }
 
+
 #[derive(Debug)]
 pub enum IllegalPosition {
     OpponentInCheck,
@@ -72,7 +72,7 @@ pub enum IllegalPosition {
     SameColorBishops(Piece, Color),  // No pawn promotions
     InvalidEPTarget,
     InvalidPawnRank,
-    InvalidCastling(Castling),
+    InvalidCastling(Quadrant),
     EnPassantSquareOccupied,
     NoEnPassantAttacker,
     NoEnPassantDefender,

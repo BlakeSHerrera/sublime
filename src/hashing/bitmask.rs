@@ -1,6 +1,7 @@
-use crate::square::Square::*;
-
-use Direction::*;
+use crate::board::{
+    square::Square::*,
+    direction::{*, Direction::*},
+};
 
 
 pub fn print(mask: u64) {
@@ -22,23 +23,6 @@ pub const fn count_bits(mut mask: u64) -> u32 {
         mask = mask & !(1 << mask.trailing_zeros());
     }
     count
-}
-
-
-pub const fn shift_left(mask: u64, n: usize) -> u64 {
-    (mask & !LEFT_FILES[n]) >> n
-}
-
-pub const fn shift_right(mask: u64, n: usize) -> u64 {
-    (mask & !RIGHT_FILES[n]) << n
-}
-
-pub const fn shift_down(mask: u64, n: usize) -> u64 {
-    (mask & !BOTTOM_RANKS[n]) >> 8 * n
-}
-
-pub const fn shift_up(mask: u64, n: usize) -> u64 {
-    (mask & !TOP_RANKS[n]) << 8 * n
 }
 
 
@@ -142,8 +126,8 @@ const fn gen_diags(seed: u64) -> [u64; 15] {
     let mut i = 0;
     while i < arr.len() {
         arr[i] = match i < 7 {
-            true => shift_left(seed, 7 - i),
-            false => shift_right(seed, i - 7),
+            true => West.shift(seed, 7 - i),
+            false => East.shift(seed, i - 7),
         };
         i += 1;
     }
@@ -187,10 +171,10 @@ pub const KING_MOVES: [u64; 64] = {
     let mut i = 0;
     while i < arr.len() {
         arr[i] = SQUARE[i];
-        arr[i] |= shift_up(arr[i], 1);
-        arr[i] |= shift_down(arr[i], 1);
-        arr[i] |= shift_left(arr[i], 1);
-        arr[i] |= shift_right(arr[i], 1);
+        arr[i] |= North.shift(arr[i], 1);
+        arr[i] |= South.shift(arr[i], 1);
+        arr[i] |= West.shift(arr[i], 1);
+        arr[i] |= East.shift(arr[i], 1);
         arr[i] ^= SQUARE[i];
         i += 1;
     }
@@ -202,14 +186,14 @@ pub const KNIGHT_MOVES: [u64; 64] = {
     let mut i = 0;
     while i < arr.len() {
         let s = SQUARE[i];
-        arr[i] = shift_left(shift_down(s, 2), 1)
-            | shift_right(shift_down(s, 2), 1)
-            | shift_left(shift_up(s, 2), 1)
-            | shift_right(shift_up(s, 2), 1)
-            | shift_up(shift_left(s, 2), 1)
-            | shift_down(shift_left(s, 2), 1)
-            | shift_up(shift_right(s, 2), 1)
-            | shift_down(shift_right(s, 2), 1);
+        arr[i] = West.shift(South.shift(s, 2), 1)
+            | East.shift(South.shift(s, 2), 1)
+            | West.shift(North.shift(s, 2), 1)
+            | East.shift(North.shift(s, 2), 1)
+            | North.shift(West.shift(s, 2), 1)
+            | South.shift(West.shift(s, 2), 1)
+            | North.shift(East.shift(s, 2), 1)
+            | South.shift(East.shift(s, 2), 1);
         i += 1;
     }
     arr
@@ -236,42 +220,6 @@ pub const PAWN_ATTACKS: [[u64; 64]; 2] = [
     gen_pawn_attacks(false)
 ];
 
-
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Direction {
-    Northwest = 0, North, Northeast, East,
-    Southeast, South, Southwest, West
-}
-
-impl Direction {
-    
-    pub const fn rays(self) -> [u64; 64] {
-        RAY_CAST[self as usize]
-    }
-
-    pub const fn ray(self, i: usize) -> u64 {
-        self.rays()[i]
-    }
-
-    pub const ALL: [Direction; 8] = [
-        Northwest, North, Northeast, East,
-        Southeast, South, Southwest, West
-    ];
-
-    pub const fn shift(self, mask: u64, n: usize) -> u64 {
-        match self {
-            North => shift_up(mask, n),
-            East => shift_right(mask, n),
-            South => shift_down(mask, n),
-            West => shift_left(mask, n),
-            Northwest => shift_up(shift_left(mask, n), n),
-            Northeast => shift_up(shift_right(mask, n), n),
-            Southeast => shift_down(shift_right(mask, n), n),
-            Southwest => shift_down(shift_left(mask, n), n),
-        }
-    }
-}
 
 // Ray cast includes starting square
 pub const RAY_CAST: [[u64; 64]; 8] = {
