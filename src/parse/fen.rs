@@ -1,17 +1,18 @@
-use std::cmp::max;
-
-use crate::board::{
-    color::{*, Color::*},
-    line::*,
-    piece::{*, GenericPiece::*},
-    square::*,
-    zone::Quadrant,
+use {
+    std::cmp::max,
+    crate::{
+        board::{
+            color::{*, Color::*},
+            line::*,
+            piece::{*, GenericPiece::*},
+            square::*,
+            zone::Quadrant,
+        },
+        game::position::*,
+        hashing::bitmask,
+    },
+    super::chr::*,
 };
-use crate::hashing::bitmask;
-use crate::game::position::*;
-
-use super::chr::ConversionError;
-use super::err::*;
 
 
 #[derive(Debug)]
@@ -22,6 +23,42 @@ pub enum FenSection {
     EnPassant,
     HalfmoveCounter,
     FullmoveCounter,
+}
+
+#[derive(Debug)]
+pub enum FenError {
+    ConversionError(ConversionError),
+    TooManyRows,
+    TooManyColumns(i32),
+    IncompleteRow(i32),
+    InvalidPiece(char),
+    InvalidColor(char),
+    InvalidCastlingChar(char),
+    InvalidCastling,
+    InvalidEnPassant,
+    InvalidEnPassantRank,
+    InvalidHalfmove,
+    InvalidFullMove,
+    IllegalPosition(IllegalPosition),
+    MissingSection(FenSection),
+    TooManySections,
+    ExpectedSpace(i32),
+    CastlingOutOfOrder,
+}
+
+#[derive(Debug)]
+pub enum IllegalPosition {
+    OpponentInCheck,
+    TooManyPieces(Piece, u32),
+    MissingKing(Color),
+    SameColorBishops(Piece, Color),  // No pawn promotions
+    InvalidEPTarget,
+    InvalidPawnRank,
+    InvalidCastling(Quadrant),
+    EnPassantSquareOccupied,
+    NoEnPassantAttacker,
+    NoEnPassantDefender,
+    CorruptedBitboard(CorruptedBitboard),
 }
 
 
@@ -138,7 +175,7 @@ impl GameState {
                         c => col = c,
                     },
                     _ => {
-                        let piece = converts(Piece::from_char(chr))? as usize;
+                        let piece = converts(Piece::from_chr(chr))? as usize;
                         state.bitboard[piece] |= 1u64 << 8 * row + col as i32;
                         col += 1;
                     },
@@ -181,7 +218,7 @@ impl GameState {
                     _ => return Err(FenError::InvalidCastling),
                 },
                 Some(chr) => {
-                    let castling = converts(Quadrant::from_char(chr))?;
+                    let castling = converts(Quadrant::from_chr(chr))?;
                     match (castling as usize) < min_index {
                         true => return Err(FenError::CastlingOutOfOrder),
                         false => {

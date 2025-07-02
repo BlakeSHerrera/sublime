@@ -1,12 +1,13 @@
-use crate::board::{
-    color::{*, Color::*},
-    line::*,
-    piece::{*, Piece::*}, 
-    square::Square,
-    zone::{*, Quadrant::*},
+use {
+    crate::board::{
+        color::{*, Color::*},
+        line::*,
+        piece::{*, Piece::*}, 
+        square::Square,
+        zone::{*, Quadrant::*},
+    },
+    ConversionError::*,
 };
-
-use ConversionError::*;
 
 
 #[derive(Debug)]
@@ -15,6 +16,7 @@ pub enum ConversionError {
     InvalidRank(char),
     InvalidFile(char),
     InvalidPiece(char),
+    InvalidPromotion(char),
     InvalidCastling(char),
     IncompleteSquare,
 }
@@ -75,9 +77,14 @@ impl Rank {
 
 
 impl Square {
+
+    pub const fn chrs(self) -> [char; 2] {
+        [self.file().chr(), self.rank().chr()]
+    }
+
     pub const fn from_chrs(file: char, rank: char) -> Result<Square, ConversionError> {
-        match (Rank::from_chr(rank), File::from_chr(file)) {
-            (Ok(r), Ok(f)) => Ok(Square::from_file_rank(f, r)),
+        match (File::from_chr(file), Rank::from_chr(rank)) {
+            (Ok(f), Ok(r)) => Ok(Square::from_file_rank(f, r)),
             (Err(e), _) => Err(e),
             (_, Err(e)) => Err(e),
         }
@@ -95,7 +102,7 @@ impl Piece {
         CHARS[self as usize]
     }
 
-    pub const fn from_char(chr: char) -> Result<Self, ConversionError> {
+    pub const fn from_chr(chr: char) -> Result<Self, ConversionError> {
         match chr {
             'R' => Ok(WhiteRook),
             'N' => Ok(WhiteKnight),
@@ -115,6 +122,26 @@ impl Piece {
 }
 
 
+impl Promotion {
+    // No differentiation between white and black promotion in UCI protocol.
+
+    pub const fn chr(self) -> char {
+        const CHARS: [char; 4] = ['r', 'k', 'b', 'q'];
+        CHARS[self as usize]
+    }
+
+    pub const fn from_chr(chr: char) -> Result<Promotion, ConversionError> {
+        match chr {
+            'r' => Ok(Promotion::Rook),
+            'k' => Ok(Promotion::Knight),
+            'b' => Ok(Promotion::Bishop),
+            'q' => Ok(Promotion::Queen),
+            _ => Err(InvalidPromotion(chr))
+        }
+    }
+}
+
+
 impl Quadrant {
 
     pub const fn chr(self) -> char {
@@ -122,7 +149,7 @@ impl Quadrant {
         CASTLING_CHARS[self as usize]
     }
 
-    pub const fn from_char(chr: char) -> Result<Quadrant, ConversionError> {
+    pub const fn from_chr(chr: char) -> Result<Quadrant, ConversionError> {
         match chr {
             'K' => Ok(WhiteKingside),
             'Q' => Ok(WhiteQueenside),

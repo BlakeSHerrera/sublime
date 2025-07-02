@@ -18,6 +18,19 @@ use {
 };
 
 
+#[derive(Debug)]
+pub enum IllegalMove {
+    InCheck,
+    InvalidMove,
+    OpponentPieceMove,
+    EmptySquareMove,
+    AlliedCapture,
+    CastleOutOfCheck,
+    CastleThroughCheck,
+    InvalidPromotion,
+}
+
+
 const ORIGIN_SQUARE_OFFSET: u64 = 0;
 const ORIGIN_PIECE_OFFSET: u64 = ORIGIN_SQUARE_OFFSET + Square::BITS;
 const DESTINATION_SQUARE_OFFSET: u64 = ORIGIN_PIECE_OFFSET + Piece::BITS;
@@ -39,7 +52,7 @@ pub struct Move(pub u64);
 impl Move {
 
     pub const fn new(
-        board: GameState, 
+        board: &GameState, 
         origin: Square, 
         destination: Square, 
         promotion: Option<Promotion>,

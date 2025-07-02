@@ -69,10 +69,6 @@ impl Square {
         A8, B8, C8, D8, E8, F8, G8, H8,
     ];
 
-    pub const fn chrs(self) -> [char; 2] {
-        [self.file().chr(), self.rank().chr()]
-    }
-
     pub const fn from_file_rank(file: File, rank: Rank) -> Square {
         Square::from_rc(rank as usize, file as usize)
     }

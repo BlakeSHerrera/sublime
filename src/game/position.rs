@@ -1,5 +1,3 @@
-
-
 use crate::{
     board::{
         color::{*, Color::*},
@@ -13,6 +11,16 @@ use crate::{
         zobrist,
     },
 };
+
+
+#[derive(Debug)]
+pub enum CorruptedBitboard {
+    // Corrupted bitboards should never arise from user error;
+    // possible user error is handled by IllegalPosition.
+    OccupancyMismatch(u64),
+    ZobristMismatch(u64, u64),  // Expected, actual
+    InvalidEnPassantCode(u32),
+}
 
 
 const CASTLING_OFFSET: u32 = 0;
