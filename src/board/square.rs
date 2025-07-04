@@ -76,5 +76,9 @@ impl Square {
     pub const fn from_rc(row: usize, col: usize) -> Square {
         Square::ALL[8 * row + col]
     }
+
+    pub const fn is_promotion_square(self) -> bool {
+        self.rank().is_promotion_rank()
+    }
 }
 

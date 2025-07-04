@@ -103,6 +103,10 @@ impl Quadrant {
         GenericPiece::King.as_color(self.color())
     }
 
+    pub const fn rook(self) -> Piece {
+        GenericPiece::Rook.as_color(self.color())
+    }
+
     pub const fn to_clear_mask(self) -> u64 {
         bitmask::CASTLING_TO_CLEAR[self as usize]
     }

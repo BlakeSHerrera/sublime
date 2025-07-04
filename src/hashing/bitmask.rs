@@ -57,6 +57,7 @@ pub const CENTER_RANKS: u64 = RANK[3] | RANK[4];
 pub const FLANK_RANKS: u64 = RANK[2] | RANK[5];
 pub const WING_RANKS: u64 = RANK[1] | RANK[6];
 pub const EDGE_RANKS: u64 = RANK[0] | RANK[7];
+pub const PAWN_PROMOTION_SQUARES: u64 = EDGE_RANKS;
 
 pub const EDGES: u64 = EDGE_FILES | EDGE_RANKS; 
 pub const WINGS: u64 = (WING_FILES | WING_RANKS) & !EDGES;
@@ -224,7 +225,29 @@ const fn gen_pawn_attacks(is_white: bool) -> [u64; 64] {
 
 pub const PAWN_ATTACKS: [[u64; 64]; 2] = [
     gen_pawn_attacks(true), 
-    gen_pawn_attacks(false)
+    gen_pawn_attacks(false),
+];
+
+
+const fn gen_pawn_moves(is_white: bool) -> [u64; 64] {
+    let mut arr: [u64; 64] = [0; 64];
+    let mut i = 0;
+    while i < arr.len() {
+        let s = SQUARE[i];
+        arr[i] |= match (is_white, i / 8) {
+            (true, 0..=1) => North.shift(s, 1) | North.shift(s, 2),
+            (true, _) => North.shift(s, 1),
+            (false, 6..=7) => South.shift(s, 1) | South.shift(s, 2),
+            (false, _) => South.shift(s, 1),
+        };
+        i += 1;
+    }
+    arr
+}
+
+pub const PAWN_MOVES: [[u64; 64]; 2] = [
+    gen_pawn_moves(true),
+    gen_pawn_moves(false),
 ];
 
 

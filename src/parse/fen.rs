@@ -84,7 +84,7 @@ impl GameState {
     fn castling_str(&self) -> String {
         let mut chars: Vec<char> = Vec::new();
         for i in Quadrant::ALL {
-            if self.can_castle(i) {
+            if self.has_castling_rights(i) {
                 chars.push(i.chr());
             }
         }
@@ -128,9 +128,9 @@ impl GameState {
         s.push(' ');
         match self.can_castle_any() {
             false => s.push('-'),
-            true => for castle_option in Quadrant::ALL {
-                if self.can_castle(castle_option) {
-                    s.push(castle_option.chr());
+            true => for q in Quadrant::ALL {
+                if self.has_castling_rights(q) {
+                    s.push(q.chr());
                 }
             }
         }
@@ -204,8 +204,8 @@ impl GameState {
         }
 
         // Castling
-        for castling in Quadrant::ALL {
-            state.deny_castling(castling);
+        for q in Quadrant::ALL {
+            state.deny_castling(q);
         }
         let mut min_index: usize = 0;
         loop {
@@ -218,12 +218,12 @@ impl GameState {
                     _ => return Err(FenError::InvalidCastling),
                 },
                 Some(chr) => {
-                    let castling = converts(Quadrant::from_chr(chr))?;
-                    match (castling as usize) < min_index {
+                    let q = converts(Quadrant::from_chr(chr))?;
+                    match (q as usize) < min_index {
                         true => return Err(FenError::CastlingOutOfOrder),
                         false => {
-                            state.set_castling(castling, true);
-                            min_index = 1 + castling as usize;
+                            state.set_castling(q, true);
+                            min_index = 1 + q as usize;
                         },
                     }
                 }
@@ -428,16 +428,16 @@ impl GameState {
             }
         }
 
-        for castling in Quadrant::ALL {
-            if !self.can_castle(castling) {
+        for q in Quadrant::ALL {
+            if !self.has_castling_rights(q) {
                 continue
             }
-            let king_actual = self.piece_at(castling.king_start());
-            let king_expected = Some(King.as_color(castling.color()));
-            let rook_actual = self.piece_at(castling.rook_start());
-            let rook_expected =  Some(Rook.as_color(castling.color()));
+            let king_actual = self.piece_at(q.king_start());
+            let king_expected = Some(King.as_color(q.color()));
+            let rook_actual = self.piece_at(q.rook_start());
+            let rook_expected =  Some(Rook.as_color(q.color()));
             if king_actual != king_expected || rook_actual != rook_expected {
-                return Err(IllegalPosition::InvalidCastling(castling));
+                return Err(IllegalPosition::InvalidCastling(q));
             }
         }
 

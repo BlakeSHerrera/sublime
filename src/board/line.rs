@@ -131,4 +131,11 @@ impl Rank {
     pub const ALL: [Rank; 8] = [
         Rank1, Rank2, Rank3, Rank4, Rank5, Rank6, Rank7, Rank8
     ];
+
+    pub const fn is_promotion_rank(self) -> bool {
+        match self {
+            Rank1 | Rank8 => true,
+            _ => false,
+        }
+    }
 }

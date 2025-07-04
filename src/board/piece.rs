@@ -96,6 +96,21 @@ impl Piece {
         BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing, BlackPawn,
     ];
 
+    pub const WHITE_PIECES: [Piece; 6] = [
+        WhiteRook, WhiteKnight, WhiteBishop, WhiteQueen, WhiteKing, WhitePawn,
+    ];
+
+    pub const BLACK_PIECES: [Piece; 6] = [
+        BlackRook, BlackKnight, BlackBishop, BlackQueen, BlackKing, BlackPawn,
+    ];
+
+    pub const fn pieces_of_color(color: Color) -> [Piece; 6] {
+        match color {
+            White => Piece::WHITE_PIECES,
+            Black => Piece::BLACK_PIECES,
+        }
+    }
+
     pub const fn color(self) -> Color {
         Color::PIECE_ARR[self as usize]
     }

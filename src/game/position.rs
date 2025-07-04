@@ -145,7 +145,7 @@ impl GameState {
         self.fen_info & 0b1111
     }
 
-    pub const fn can_castle(&self, castling: Quadrant) -> bool {
+    pub const fn has_castling_rights(&self, castling: Quadrant) -> bool {
         self.castling_code() & (1 << castling as u32) != 0
     }
 
@@ -179,7 +179,7 @@ impl GameState {
         }
     }
 
-    pub const fn flip_turn(&mut self) {
+    pub const fn inc_turn(&mut self) {
         self.set_fullmove_ctr(self.fullmove_ctr() + self.turn() as u32);
         self.fen_info ^= 1 << TURN_OFFSET;
         self.zobrist_hash ^= zobrist::BLACK_TO_MOVE;
@@ -245,6 +245,13 @@ impl GameState {
 
     pub const fn ep_square(&self) -> Square {
         Square::ALL[self.ep_square_num()]
+    }
+
+    pub const fn ep_mask(&self) -> u64 {
+        match self.ep_legal() {
+            true => self.ep_square().mask(),
+            false => 0,
+        }
     }
 
     pub const fn set_ep_target(&mut self, file: File) {

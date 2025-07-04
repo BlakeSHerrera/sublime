@@ -24,6 +24,10 @@ pub const fn get_bishop_moves(square: usize, blockers: u64) -> u64 {
     BISHOP_TABLE[square][i as usize]
 }
 
+pub const fn get_queen_moves(square: usize, blockers: u64) -> u64 {
+    get_rook_moves(square, blockers) | get_bishop_moves(square, blockers)
+}
+
 
 const ROOK_MAGICS: [u64; 64] = [
     0x80004000976080,

@@ -32,6 +32,7 @@ fn main() {
         ("FLANK_RANKS", FLANK_RANKS),
         ("WING_RANKS", WING_RANKS),
         ("EDGE_RANKS", EDGE_RANKS),
+        ("PAWN_PROMOTION_SQUARES", PAWN_PROMOTION_SQUARES),
         ("CENTER", CENTER),
         ("FLANKS", FLANKS),
         ("WINGS", WINGS),

@@ -166,13 +166,27 @@ impl Move {
 
 impl GameState {
 
-    pub const fn push(&mut self, mv: Move) {
+    pub const fn push_partial(&mut self, mv: Move) {
+        // No fen info updates; to check for move legality
         self.remove_piece(mv.origin_piece(), mv.origin_square());
         match mv.captured_piece() {
             Some(p) => self.remove_piece(p, mv.captured_square()),
             None => (),
         };
         self.put_piece(mv.destination_piece(), mv.destination_square());
+
+        match mv.is_castling() {
+            true => {
+                let q = mv.get_castling();
+                self.remove_piece(q.rook(), q.rook_start());
+                self.put_piece(q.rook(), q.rook_end());
+            },
+            false => (),
+        }
+    }
+
+    pub const fn push(&mut self, mv: Move) {
+        self.push_partial(mv);
         
         self.deny_ep();
         match mv.origin_piece().as_generic() {
@@ -188,15 +202,6 @@ impl GameState {
                 self.inc_halfmove_ctr();
                 self.deny_castling(Kingside.to_quadrant(color));
                 self.deny_castling(Queenside.to_quadrant(color));
-                match mv.is_castling() {
-                    true => {
-                        let quad = mv.get_castling();
-                        let rook = Rook.as_color(color);
-                        self.remove_piece(rook, quad.rook_start());
-                        self.put_piece(rook, quad.rook_end());
-                    },
-                    false => (),
-                }
             },
             _ => self.inc_halfmove_ctr(),
         };
@@ -209,6 +214,25 @@ impl GameState {
             _ => (),
         };
 
-        self.flip_turn();
+        self.inc_turn();
+    }
+
+    pub const fn pop_partial(&mut self, mv: Move) {
+        // No fen info updates
+        self.put_piece(mv.origin_piece(), mv.origin_square());
+        self.remove_piece(mv.destination_piece(), mv.destination_square());
+        match mv.captured_piece() {
+            None => (),
+            Some(p) => self.put_piece(p, mv.captured_square()),
+        }
+        match mv.is_castling() {
+            false => (),
+            true => {
+                let q = mv.get_castling();
+                self.put_piece(q.rook(), q.rook_start());
+                self.remove_piece(q.rook(), q.rook_end());
+            }
+        }
+        // It is the caller's responsibility to reset the last fen_info.
     }
 }
